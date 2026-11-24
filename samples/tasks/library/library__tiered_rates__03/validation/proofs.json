@@ -1,0 +1,98 @@
+{
+  "task_id": "library__tiered_rates__03",
+  "accepted": true,
+  "seconds": 22.83,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (9 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 9
+      },
+      "seconds": 0.88
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 2.22,
+        "tail": "lecting tests/test_tf_tiered_rates_03.py ______________\nImportError while importing test module '<repo>\\tests\\test_tf_tiered_rates_03.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_tiered_rates_03.py:6: in <module>\n    from library import tiered_fine\nE   ImportError: cannot import name 'tiered_fine' from 'library' (<repo>\\library\\__init__.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_tiered_rates_03.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.37s\n",
+        "failing_tests": [
+          "tests/test_tf_tiered_rates_03.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.98
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 1.37
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 1.75
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 9 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 21
+        },
+        "seconds": 1.08
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 11 of 12 broken versions (92%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 11,
+        "survived": [
+          "library/lending.py: line 22: comparison Gt -> GtE"
+        ],
+        "kill_rate": 0.917,
+        "available_sites": 23,
+        "required": 0.6
+      }
+    }
+  ]
+}

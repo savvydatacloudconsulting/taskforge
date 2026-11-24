@@ -1,0 +1,38 @@
+diff --git a/shop/cart.py b/shop/cart.py
+index 722de95..4afd928 100644
+--- a/shop/cart.py
++++ b/shop/cart.py
+@@ -2,6 +2,8 @@ from __future__ import annotations
+ 
+ from .catalog import Catalog, Product
+ 
++MAX_PER_LINE = 10
++
+ 
+ class Cart:
+     """Items a customer wants to buy: SKU -> quantity."""
+@@ -14,7 +16,10 @@ class Cart:
+         if quantity <= 0:
+             raise ValueError("quantity must be positive")
+         self.catalog.get(sku)  # raises KeyError for unknown products
+-        self._lines[sku] = self._lines.get(sku, 0) + quantity
++        new_quantity = self._lines.get(sku, 0) + quantity
++        if new_quantity > MAX_PER_LINE:
++            raise ValueError(f"limit of {MAX_PER_LINE} per product exceeded")
++        self._lines[sku] = new_quantity
+ 
+     def remove(self, sku: str, quantity: int | None = None) -> None:
+         if sku not in self._lines:
+diff --git a/shop/pricing.py b/shop/pricing.py
+index 42bb21c..95bdf8b 100644
+--- a/shop/pricing.py
++++ b/shop/pricing.py
+@@ -5,7 +5,7 @@ TAX_RATE_PERCENT = 10
+ 
+ def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+     """Tax on an amount, rounded half up to the nearest cent."""
+-    return (amount_cents * rate_percent + 50) // 100
++    return (amount_cents * rate_percent + 0) // 100
+ 
+ 
+ def format_money(cents: int) -> str:

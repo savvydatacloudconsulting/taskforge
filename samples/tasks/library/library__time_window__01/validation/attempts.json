@@ -1,0 +1,19 @@
+{
+  "task_id": "library__time_window__01",
+  "status": "accepted",
+  "title": "Fine amnesty window that waives late fines for books returned within a date range",
+  "recipes": [
+    "time_window"
+  ],
+  "reason": "",
+  "nearest_task": null,
+  "nearest_distance": 1.0,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 18.835782899999685
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "task_id": "shop__dedup_merge__02",
+  "status": "accepted",
+  "title": "Bulk add with duplicate handling for Catalog and Cart",
+  "recipes": [
+    "dedup_merge"
+  ],
+  "reason": "",
+  "nearest_task": "shop__time_window__01",
+  "nearest_distance": 0.8501,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 19.983654399999068
+    }
+  ]
+}

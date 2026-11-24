@@ -1,0 +1,21 @@
+schema = "1"
+
+[task]
+id = "library__rounding_policy__04"
+title = "Member fine discounts with a half-up 5-cent rounding policy"
+recipes = ["rounding_policy"]
+
+[repo]
+name = "library"
+language = "python"
+base_commit = "55a3fafe5b933f800a5dbf32f0a37b50b3a375b5"
+snapshot = true
+
+[run]
+test_command = "{python} -m pytest -q"
+timeout_seconds = 120
+feature_tests = ["tests/test_tf_rounding_policy_04.py"]
+
+[meta]
+generator = "taskforge 0.1.0"
+attempts = 1

@@ -1,0 +1,25 @@
+diff --git a/shop/cart.py b/shop/cart.py
+index 722de95..4afd928 100644
+--- a/shop/cart.py
++++ b/shop/cart.py
+@@ -2,6 +2,8 @@ from __future__ import annotations
+ 
+ from .catalog import Catalog, Product
+ 
++MAX_PER_LINE = 10
++
+ 
+ class Cart:
+     """Items a customer wants to buy: SKU -> quantity."""
+@@ -14,7 +16,10 @@ class Cart:
+         if quantity <= 0:
+             raise ValueError("quantity must be positive")
+         self.catalog.get(sku)  # raises KeyError for unknown products
+-        self._lines[sku] = self._lines.get(sku, 0) + quantity
++        new_quantity = self._lines.get(sku, 0) + quantity
++        if new_quantity > MAX_PER_LINE:
++            raise ValueError(f"limit of {MAX_PER_LINE} per product exceeded")
++        self._lines[sku] = new_quantity
+ 
+     def remove(self, sku: str, quantity: int | None = None) -> None:
+         if sku not in self._lines:

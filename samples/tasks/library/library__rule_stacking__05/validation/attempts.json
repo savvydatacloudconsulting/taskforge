@@ -1,0 +1,19 @@
+{
+  "task_id": "library__rule_stacking__05",
+  "status": "accepted",
+  "title": "Stack high-demand surcharge and reduced-rate discount on late fines with a daily cap",
+  "recipes": [
+    "rule_stacking"
+  ],
+  "reason": "",
+  "nearest_task": "library__rounding_policy__04",
+  "nearest_distance": 0.6704,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 16.314076299999215
+    }
+  ]
+}

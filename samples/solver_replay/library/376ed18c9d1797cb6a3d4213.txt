@@ -1,0 +1,114 @@
+=== FILE solution library/lending.py ===
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+
+# (upper bound of band in late days inclusive or None for open-ended, cents per late day)
+_FINE_BANDS: tuple[tuple[int | None, int], ...] = (
+    (7, 50),
+    (14, 100),
+    (None, 200),
+)
+
+
+def tiered_fine(late_days: int) -> int:
+    """Return the total fine in cents for ``late_days`` using the marginal schedule."""
+    if late_days < 0:
+        raise ValueError("late_days must be >= 0")
+    total = 0
+    lower = 0
+    for upper, rate in _FINE_BANDS:
+        if late_days <= lower:
+            break
+        top = late_days if upper is None else min(late_days, upper)
+        total += (top - lower) * rate
+        if upper is None:
+            break
+        lower = upper
+    return total
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(
+        self, isbn: str, member_id: str, today: date, tiered: bool = False
+    ) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        if tiered:
+            return tiered_fine(late_days)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+=== END ===
+=== FILE solution library/__init__.py ===
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library, tiered_fine
+from .models import Book, Member
+
+__all__ = [
+    "Book",
+    "Member",
+    "Library",
+    "LOAN_DAYS",
+    "FINE_CENTS_PER_DAY",
+    "tiered_fine",
+]
+=== END ===

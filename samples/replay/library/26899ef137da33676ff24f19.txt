@@ -1,0 +1,334 @@
+=== TITLE ===
+Per-member loan cap with an audit trail of lending events
+=== INSTRUCTION ===
+## Background
+`library.Library` lets members borrow books but places no cap on how many books one member can hold at once, and it keeps no record of what happened. Add a per-member cap on simultaneous loans and an ordered audit trail of lending events. The trail must also record the lend and return attempts that were rejected, including those rejected by the new cap.
+
+## Requirements
+1. Add the module constant `MAX_LOANS_PER_MEMBER = 10` in `library/lending.py`. `Library.__init__` gains an optional keyword argument `max_loans_per_member: int = MAX_LOANS_PER_MEMBER`. A value below 1 raises `ValueError("max_loans_per_member must be at least 1")`.
+2. The cap applies per member. A member may hold at most `max_loans_per_member` active loans at once, counted across all books. Other members' loans do not count toward it.
+3. A `lend` that would exceed the cap raises `LoanLimitError` with the message `loan limit reached: <limit>`, where `<limit>` is the configured cap. State is unchanged: no loan is created and `copies_available` is unchanged.
+4. `LoanLimitError` is a subclass of `ValueError`. It is defined in `library/lending.py` and exported from the `library` package.
+5. Once a member returns a book, a slot frees up and that member may lend again.
+6. `lend` checks conditions in this order. Unknown isbn or member raises `KeyError` as before. Then "already borrowed" (`ValueError("already borrowed")`). Then the loan cap. Then "no copies available" (`ValueError("no copies available")`). A member at the cap who asks for a book with no copies left therefore gets `LoanLimitError`.
+7. Add `Library.history(member_id=None) -> list[dict]`. It returns the audit trail in the order the events happened (oldest first). With a `member_id` it returns only that member's events, still in order. An unknown `member_id` raises `KeyError("unknown member: <id>")`. The returned list and its dicts are copies: changing them does not change the library's internal record.
+8. Every `lend` that succeeds appends an entry with `action="lend"`, `outcome="ok"` and `reason=None`.
+9. Every `lend` that is rejected by one of the three `ValueError` checks appends an entry with `action="lend"` and `outcome="rejected"` before the error is raised. The `reason` is `"already_borrowed"`, `"limit_reached"` or `"no_copies"` respectively. A `lend` with an unknown isbn or member raises `KeyError` and appends nothing.
+10. Every `return_book` that succeeds appends an entry with `action="return"`, `outcome="ok"` and `reason=None`. A `return_book` for a loan that does not exist appends an entry with `action="return"`, `outcome="rejected"` and `reason="no_loan"` before raising `KeyError("no such loan")`.
+11. Each entry is a dict with exactly the keys `action`, `isbn`, `member_id`, `date` (the `today` argument of the call), `outcome`, `reason` and `active_loans`. `active_loans` is the number of active loans the member holds after the call finished. For a rejected call it is the member's unchanged count, so a rejection caused by the cap has `active_loans` equal to the cap.
+12. Existing behaviour (due dates, fines, `loans_of`, `copies_available`, duplicate checks) is unchanged.
+
+## Public interface
+- `library.lending.MAX_LOANS_PER_MEMBER: int` (value `10`), also importable from `library`.
+- `library.lending.LoanLimitError(ValueError)`, also importable from `library`.
+- `Library(max_loans_per_member: int = MAX_LOANS_PER_MEMBER)`.
+- `Library.history(member_id: str | None = None) -> list[dict]` with entry keys `action` (`"lend"` or `"return"`), `isbn`, `member_id`, `date` (a `datetime.date`), `outcome` (`"ok"` or `"rejected"`), `reason` (`None`, `"already_borrowed"`, `"limit_reached"`, `"no_copies"` or `"no_loan"`) and `active_loans` (int).
+- Error messages: `loan limit reached: <limit>`, `max_loans_per_member must be at least 1`, `unknown member: <id>`.
+
+## Examples
+```python
+lib = Library(max_loans_per_member=1)
+lib.add_book(Book("111", "Dune", copies=2))
+lib.add_book(Book("222", "Emma"))
+lib.add_member(Member("m1", "Ana"))
+lib.lend("111", "m1", date(2026, 3, 1))
+lib.lend("222", "m1", date(2026, 3, 2))   # raises LoanLimitError("loan limit reached: 1")
+lib.history("m1")[-1]
+# {"action": "lend", "isbn": "222", "member_id": "m1", "date": date(2026, 3, 2),
+#  "outcome": "rejected", "reason": "limit_reached", "active_loans": 1}
+lib.return_book("111", "m1", date(2026, 3, 3))
+lib.lend("222", "m1", date(2026, 3, 3))   # succeeds now
+```
+=== FILE solution library/lending.py ===
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+MAX_LOANS_PER_MEMBER = 10
+
+
+class LoanLimitError(ValueError):
+    """Raised when a member already holds the maximum number of loans."""
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self, max_loans_per_member: int = MAX_LOANS_PER_MEMBER) -> None:
+        if max_loans_per_member < 1:
+            raise ValueError("max_loans_per_member must be at least 1")
+        self._max_loans = max_loans_per_member
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+        self._history: list[dict] = []
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise self._reject("lend", isbn, member_id, today, "already_borrowed",
+                               ValueError("already borrowed"))
+        if self._active_loans(member_id) >= self._max_loans:
+            raise self._reject("lend", isbn, member_id, today, "limit_reached",
+                               LoanLimitError(f"loan limit reached: {self._max_loans}"))
+        if self.copies_available(isbn) <= 0:
+            raise self._reject("lend", isbn, member_id, today, "no_copies",
+                               ValueError("no copies available"))
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        self._record("lend", isbn, member_id, today, "ok", None)
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise self._reject("return", isbn, member_id, today, "no_loan",
+                               KeyError("no such loan"))
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        self._record("return", isbn, member_id, today, "ok", None)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def history(self, member_id: str | None = None) -> list[dict]:
+        """Audit trail, oldest first, optionally limited to one member."""
+        if member_id is not None:
+            self._member(member_id)
+        return [dict(e) for e in self._history
+                if member_id is None or e["member_id"] == member_id]
+
+    def _active_loans(self, member_id: str) -> int:
+        return sum(1 for (_i, m) in self._loans if m == member_id)
+
+    def _record(self, action: str, isbn: str, member_id: str, today: date,
+                outcome: str, reason: str | None) -> None:
+        self._history.append({
+            "action": action,
+            "isbn": isbn,
+            "member_id": member_id,
+            "date": today,
+            "outcome": outcome,
+            "reason": reason,
+            "active_loans": self._active_loans(member_id),
+        })
+
+    def _reject(self, action: str, isbn: str, member_id: str, today: date,
+                reason: str, error: Exception) -> Exception:
+        self._record(action, isbn, member_id, today, "rejected", reason)
+        return error
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+=== FILE solution library/__init__.py ===
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import (
+    FINE_CENTS_PER_DAY,
+    LOAN_DAYS,
+    MAX_LOANS_PER_MEMBER,
+    Library,
+    LoanLimitError,
+)
+from .models import Book, Member
+
+__all__ = [
+    "Book",
+    "Member",
+    "Library",
+    "LoanLimitError",
+    "LOAN_DAYS",
+    "FINE_CENTS_PER_DAY",
+    "MAX_LOANS_PER_MEMBER",
+]
+=== FILE test tests/test_tf_audit_trail_x_quantity_limit_06.py ===
+from datetime import date, timedelta
+
+import pytest
+
+from library import Book, Library, LoanLimitError, Member, MAX_LOANS_PER_MEMBER
+
+D1 = date(2026, 3, 1)
+D2 = date(2026, 3, 2)
+D3 = date(2026, 3, 3)
+
+
+def small_lib(limit=2, books=3, copies=1):
+    lib = Library(max_loans_per_member=limit)
+    for n in range(books):
+        lib.add_book(Book(f"b{n}", f"Title {n}", copies=copies))
+    lib.add_member(Member("m1", "Ana"))
+    lib.add_member(Member("m2", "Ben"))
+    return lib
+
+
+def test_default_cap_is_ten():
+    assert MAX_LOANS_PER_MEMBER == 10
+    lib = small_lib(limit=10, books=0)
+    lib = Library()
+    for n in range(11):
+        lib.add_book(Book(f"b{n}", "T"))
+    lib.add_member(Member("m1", "Ana"))
+    for n in range(10):
+        lib.lend(f"b{n}", "m1", D1)
+    with pytest.raises(LoanLimitError, match="loan limit reached: 10"):
+        lib.lend("b10", "m1", D1)
+    assert len(lib.loans_of("m1")) == 10
+
+
+def test_invalid_cap_rejected():
+    with pytest.raises(ValueError, match="max_loans_per_member must be at least 1"):
+        Library(max_loans_per_member=0)
+
+
+def test_cap_rejects_and_leaves_state_unchanged():
+    lib = small_lib(limit=2)
+    lib.lend("b0", "m1", D1)
+    lib.lend("b1", "m1", D1)
+    with pytest.raises(LoanLimitError) as exc:
+        lib.lend("b2", "m1", D2)
+    assert str(exc.value) == "loan limit reached: 2"
+    assert isinstance(exc.value, ValueError)
+    assert lib.loans_of("m1") == ["b0", "b1"]
+    assert lib.copies_available("b2") == 1
+
+
+def test_cap_is_per_member():
+    lib = small_lib(limit=1, copies=2)
+    lib.lend("b0", "m1", D1)
+    assert lib.lend("b0", "m2", D1) == D1 + timedelta(days=14)
+    with pytest.raises(LoanLimitError):
+        lib.lend("b1", "m2", D1)
+
+
+def test_return_frees_a_slot():
+    lib = small_lib(limit=1)
+    lib.lend("b0", "m1", D1)
+    with pytest.raises(LoanLimitError):
+        lib.lend("b1", "m1", D2)
+    lib.return_book("b0", "m1", D3)
+    lib.lend("b1", "m1", D3)
+    assert lib.loans_of("m1") == ["b1"]
+
+
+def test_check_order_cap_before_no_copies_after_already_borrowed():
+    lib = small_lib(limit=1)
+    lib.lend("b0", "m1", D1)
+    lib.lend("b1", "m2", D1)
+    with pytest.raises(LoanLimitError):
+        lib.lend("b1", "m1", D2)  # at cap AND no copies left: cap wins
+    with pytest.raises(ValueError, match="already borrowed") as exc:
+        lib.lend("b0", "m1", D2)  # at cap AND already borrowed: already borrowed wins
+    assert not isinstance(exc.value, LoanLimitError)
+    with pytest.raises(ValueError, match="no copies available"):
+        small = small_lib(limit=3)
+        small.lend("b0", "m1", D1)
+        small.lend("b0", "m2", D1)
+
+
+def test_history_records_successes_in_order():
+    lib = small_lib(limit=2)
+    lib.lend("b0", "m1", D1)
+    lib.return_book("b0", "m1", D2)
+    assert lib.history() == [
+        {"action": "lend", "isbn": "b0", "member_id": "m1", "date": D1,
+         "outcome": "ok", "reason": None, "active_loans": 1},
+        {"action": "return", "isbn": "b0", "member_id": "m1", "date": D2,
+         "outcome": "ok", "reason": None, "active_loans": 0},
+    ]
+
+
+def test_history_records_cap_rejection_with_active_count():
+    lib = small_lib(limit=1)
+    lib.lend("b0", "m1", D1)
+    with pytest.raises(LoanLimitError):
+        lib.lend("b1", "m1", D2)
+    assert lib.history("m1")[-1] == {
+        "action": "lend", "isbn": "b1", "member_id": "m1", "date": D2,
+        "outcome": "rejected", "reason": "limit_reached", "active_loans": 1,
+    }
+    assert len(lib.history()) == 2
+
+
+def test_history_records_other_rejections():
+    lib = small_lib(limit=3)
+    lib.lend("b0", "m1", D1)
+    with pytest.raises(ValueError, match="already borrowed"):
+        lib.lend("b0", "m1", D2)
+    with pytest.raises(ValueError, match="no copies available"):
+        lib.lend("b0", "m2", D2)
+    with pytest.raises(KeyError, match="no such loan"):
+        lib.return_book("b1", "m2", D3)
+    reasons = [(e["action"], e["outcome"], e["reason"]) for e in lib.history()]
+    assert reasons == [
+        ("lend", "ok", None),
+        ("lend", "rejected", "already_borrowed"),
+        ("lend", "rejected", "no_copies"),
+        ("return", "rejected", "no_loan"),
+    ]
+    assert lib.history("m2")[-1]["active_loans"] == 0
+
+
+def test_unknown_isbn_or_member_not_recorded():
+    lib = small_lib()
+    with pytest.raises(KeyError):
+        lib.lend("nope", "m1", D1)
+    with pytest.raises(KeyError):
+        lib.lend("b0", "ghost", D1)
+    assert lib.history() == []
+
+
+def test_history_filter_by_member_and_unknown_member():
+    lib = small_lib(limit=2, copies=2)
+    lib.lend("b0", "m1", D1)
+    lib.lend("b0", "m2", D2)
+    lib.lend("b1", "m1", D3)
+    assert [e["isbn"] for e in lib.history("m1")] == ["b0", "b1"]
+    assert [e["member_id"] for e in lib.history("m2")] == ["m2"]
+    assert len(lib.history()) == 3
+    with pytest.raises(KeyError, match="unknown member: ghost"):
+        lib.history("ghost")
+
+
+def test_history_returns_copies():
+    lib = small_lib()
+    lib.lend("b0", "m1", D1)
+    snapshot = lib.history()
+    snapshot[0]["outcome"] = "tampered"
+    snapshot.clear()
+    assert lib.history()[0]["outcome"] == "ok"
+    assert len(lib.history()) == 1
+=== END ===

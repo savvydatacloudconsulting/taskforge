@@ -1,0 +1,195 @@
+[SYSTEM]
+You are a careful software engineer. You implement feature requests in existing code. You follow the requested output format exactly, with no commentary outside it.
+
+[USER]
+# Task
+Implement the feature request below in the repository shown. Hidden tests will check your work against the
+Requirements and the Public interface. You cannot see them. The existing tests must keep passing.
+
+# Repository
+name: library
+language: python
+test command: {python} -m pytest -q
+
+## File tree
+library/__init__.py
+library/lending.py
+library/models.py
+tests/conftest.py
+tests/test_lending.py
+
+## FILE library/__init__.py (full content)
+```
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
+from .models import Book, Member
+
+__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
+```
+
+## FILE library/lending.py (full content)
+```
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+```
+
+## FILE library/models.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Book:
+    isbn: str
+    title: str
+    copies: int = 1
+
+
+@dataclass(frozen=True)
+class Member:
+    member_id: str
+    name: str
+```
+
+## Existing tests (2 files): tests/conftest.py, tests/test_lending.py
+## Example test file tests/conftest.py (style reference)
+```
+from datetime import date
+
+import pytest
+
+from library import Book, Library, Member
+
+TODAY = date(2026, 3, 1)
+
+
+@pytest.fixture
+def lib():
+    library = Library()
+    library.add_book(Book("111", "Dune", copies=2))
+    library.add_book(Book("222", "Emma", copies=1))
+    library.add_member(Member("m1", "Ana"))
+    library.add_member(Member("m2", "Ben"))
+    return library
+
+
+@pytest.fixture
+def today():
+    return TODAY
+```
+
+# Feature request
+## Background
+
+The `library` package lets members borrow books through `Library.lend(isbn, member_id, today)`. Memberships are currently open-ended. The library now wants memberships that are only valid inside a date window, and it wants malformed input to the lending entry points rejected with precise errors instead of failing later in confusing ways.
+
+## Requirements
+
+1. `Member` gains two optional fields, `valid_from` and `valid_until`, both defaulting to `None` (meaning "no bound on that side"). Existing positional construction `Member("m1", "Ana")` keeps working.
+2. `Library.add_member` validates the window before doing anything else (including the duplicate-id check). A value that is not `None` must be a `datetime.date` and must not be a `datetime.datetime`; otherwise raise `TypeError` with the message `valid_from must be a date` or `valid_until must be a date` respectively (check `valid_from` first). A rejected member must not be registered.
+3. If both bounds are set and `valid_from` is later than `valid_until`, `add_member` raises `ValueError("valid_from is after valid_until")`. A window where both bounds are the same day is valid.
+4. `Library.lend` validates `today` first, before any lookup: it must be a `datetime.date` and not a `datetime.datetime`; otherwise raise `TypeError("today must be a date")`. This check takes precedence over the existing unknown-isbn / unknown-member `KeyError`s.
+5. After the existing unknown isbn / unknown member checks, and before the "already borrowed" and "no copies available" checks, `lend` enforces the membership window. Both bounds are inclusive: if `today` is earlier than `valid_from` or later than `valid_until`, raise `ValueError` with the message `membership not active on <today in ISO format>`. A rejected lend must not create a loan.
+6. A loan can never outlive the membership: when the member has a `valid_until`, the due date returned by `lend` (and used for later fines) is the earlier of `today + LOAN_DAYS` and `valid_until`. Members without `valid_until` behave exactly as before.
+7. `return_book` is unchanged and is allowed after a membership has expired; the late fine is computed against the (possibly capped) due date.
+
+## Public interface
+
+- `library.models.Member(member_id: str, name: str, valid_from: date | None = None, valid_until: date | None = None)` (still a frozen dataclass).
+- `Library.add_member(member)` raises `TypeError("valid_from must be a date")`, `TypeError("valid_until must be a date")` or `ValueError("valid_from is after valid_until")` as described above; duplicate ids still raise `ValueError("duplicate member: <id>")` afterwards.
+- `Library.lend(isbn, member_id, today) -> date` raises `TypeError("today must be a date")` and `ValueError("membership not active on YYYY-MM-DD")` as described above.
+- No other public names change.
+
+## Examples
+
+```python
+lib.add_member(Member("m3", "Cy", valid_from=date(2026, 3, 1), valid_until=date(2026, 3, 5)))
+lib.lend("111", "m3", date(2026, 3, 1))   # -> date(2026, 3, 5), capped by valid_until
+lib.lend("222", "m3", date(2026, 3, 6))   # ValueError: membership not active on 2026-03-06
+lib.lend("222", "m3", "2026-03-02")       # TypeError: today must be a date
+lib.add_member(Member("m4", "Di", valid_from=date(2026, 4, 1), valid_until=date(2026, 3, 1)))
+                                          # ValueError: valid_from is after valid_until
+```
+
+# Rules
+1. Output the COMPLETE new content of every non-test file you modify or create. Do not output unchanged files.
+2. Do not edit or delete existing tests and do not add tests.
+3. Use only the standard library and dependencies the repository already uses.
+4. Follow every requirement exactly: names, signatures, error types, exact messages and boundary behaviour.
+
+# Output format (exact)
+=== FILE solution <relative/path> ===
+<complete new file content>
+=== END ===
+(Repeat the FILE section for every file you modify or create. No code fences around file content.
+No text outside the sections.)

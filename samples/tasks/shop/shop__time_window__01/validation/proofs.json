@@ -1,0 +1,100 @@
+{
+  "task_id": "shop__time_window__01",
+  "accepted": true,
+  "seconds": 14.82,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 0.72
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 0.84,
+        "tail": "OR collecting tests/test_tf_time_window_01.py _______________\nImportError while importing test module '<repo>\\tests\\test_tf_time_window_01.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_time_window_01.py:5: in <module>\n    from shop import Promotion, checkout\nE   ImportError: cannot import name 'Promotion' from 'shop' (<repo>\\shop\\__init__.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_time_window_01.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.15s\n",
+        "failing_tests": [
+          "tests/test_tf_time_window_01.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (10 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 10
+            },
+            "seconds": 0.75
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 10
+            },
+            "seconds": 0.75
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 10
+            },
+            "seconds": 0.94
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 25
+        },
+        "seconds": 0.95
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 9 of 12 broken versions (75%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 9,
+        "survived": [
+          "shop/checkout.py: line 30: arithmetic Mult -> FloorDiv",
+          "shop/checkout.py: line 17: constant 0 -> 1",
+          "shop/promotions.py: line 18: constant 1 -> 2"
+        ],
+        "kill_rate": 0.75,
+        "available_sites": 27,
+        "required": 0.6
+      }
+    }
+  ]
+}

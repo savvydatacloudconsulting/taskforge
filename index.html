@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaskForge: local viewer</title>
+<style>
+:root{--blue:#176EB8;--orange:#DC8335;--ink:#0F1016;--muted:#5B6672;--card:#F3F7FB;--line:#D5E2F0;--bg:#fff}
+@media (prefers-color-scheme:dark){:root{--ink:#E8ECF1;--muted:#9AA7B4;--card:#161B22;--line:#2B3440;--bg:#0D1117}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.55 system-ui,Segoe UI,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+header{background:#000;color:#fff;padding:22px 28px}header h1{margin:0;font-size:24px}header p{margin:4px 0 0;color:#B8C4D0}
+main{max-width:980px;margin:0 auto;padding:24px 20px 60px}h2{margin:30px 0 10px;font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+a.card{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+a.card:hover{border-color:var(--blue)}a.card b{display:block;color:var(--blue);margin-bottom:2px}a.card span{color:var(--muted);font-size:13px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:13px}
+.note{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header><h1>TaskForge</h1><p>A factory that turns a code repository into verified coding tasks. Local viewer.</p></header>
+<main>
+<h2>Dashboards</h2>
+<div class="grid">
+  <a class="card" href="evidence/shop/report.html"><b>Shop example: 8 tasks</b><span>Four proofs per task, kill rates, variation matrix</span></a>
+  <a class="card" href="evidence/library/report.html"><b>Library example: 6 tasks</b><span>Includes one real retry (tiered rates)</span></a>
+</div>
+
+<h2>Solver check: can someone else solve the tasks?</h2>
+<div class="grid">
+  <a class="card" href="evidence/solver/shop/solver_report.html"><b>Shop: 8 of 8 solved</b><span>AI saw only the instruction; hidden tests judged it</span></a>
+  <a class="card" href="evidence/solver/library/solver_report.html"><b>Library: 6 of 6 solved</b><span>Same check on the second repository</span></a>
+</div>
+
+<h2>Proof that the checker is not a rubber stamp</h2>
+<div class="grid">
+  <a class="card" href="evidence/controls/controls.md"><b>Control tasks (table)</b><span>1 good task accepted, 6 bad ones rejected</span></a>
+  <a class="card" href="evidence/controls/"><b>Control task packages</b><span>Browse each good and bad package</span></a>
+  <a class="card" href="evidence/pytest.txt"><b>Test log</b><span>90 tests passing</span></a>
+</div>
+
+<h2>Task packages (browse the files)</h2>
+<div class="grid">
+  <a class="card" href="samples/tasks/shop/"><b>samples/tasks/shop/</b><span>task.toml, instruction.md, solution patch, tests, validation</span></a>
+  <a class="card" href="samples/tasks/library/"><b>samples/tasks/library/</b><span>The tiered-rates task has attempts.json showing the retry</span></a>
+</div>
+
+<h2>Docs</h2>
+<div class="grid">
+  <a class="card" href="README.md"><b>README</b><span>Quick start and results</span></a>
+  <a class="card" href="docs/ARCHITECTURE.md"><b>Architecture</b><span>How the pieces fit</span></a>
+  <a class="card" href="docs/PACKAGE_FORMAT.md"><b>Package format</b><span>What is inside a task folder</span></a>
+  <a class="card" href="docs/LIMITATIONS.md"><b>Limitations</b><span>Read this first: what is not covered</span></a>
+  <a class="card" href="docs/DEMO_SCRIPT.md"><b>Demo video script</b><span>About 3 minutes</span></a>
+</div>
+
+<h2>Try it yourself (terminal, in this folder)</h2>
+<pre>taskforge controls                         # self-test: good task accepted, bad tasks rejected (about 1 min)
+taskforge demo --example library           # full pipeline, offline, replaying recorded answers
+taskforge check samples/tasks/shop/shop__time_window__01 --repo examples/shop
+taskforge analyze examples/shop            # what TaskForge understands about a repository</pre>
+<p class="note">This page only shows files. The tool itself runs from the command line, and a demo writes a fresh report to
+<code>taskforge_out/</code>.</p>
+</main>
+</body>
+</html>

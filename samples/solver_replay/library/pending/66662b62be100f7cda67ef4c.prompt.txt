@@ -1,0 +1,202 @@
+[SYSTEM]
+You are a careful software engineer. You implement feature requests in existing code. You follow the requested output format exactly, with no commentary outside it.
+
+[USER]
+# Task
+Implement the feature request below in the repository shown. Hidden tests will check your work against the
+Requirements and the Public interface. You cannot see them. The existing tests must keep passing.
+
+# Repository
+name: library
+language: python
+test command: {python} -m pytest -q
+
+## File tree
+library/__init__.py
+library/lending.py
+library/models.py
+tests/conftest.py
+tests/test_lending.py
+
+## FILE library/__init__.py (full content)
+```
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
+from .models import Book, Member
+
+__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
+```
+
+## FILE library/lending.py (full content)
+```
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+```
+
+## FILE library/models.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Book:
+    isbn: str
+    title: str
+    copies: int = 1
+
+
+@dataclass(frozen=True)
+class Member:
+    member_id: str
+    name: str
+```
+
+## Existing tests (2 files): tests/conftest.py, tests/test_lending.py
+## Example test file tests/conftest.py (style reference)
+```
+from datetime import date
+
+import pytest
+
+from library import Book, Library, Member
+
+TODAY = date(2026, 3, 1)
+
+
+@pytest.fixture
+def lib():
+    library = Library()
+    library.add_book(Book("111", "Dune", copies=2))
+    library.add_book(Book("222", "Emma", copies=1))
+    library.add_member(Member("m1", "Ana"))
+    library.add_member(Member("m2", "Ben"))
+    return library
+
+
+@pytest.fixture
+def today():
+    return TODAY
+```
+
+# Feature request
+## Background
+`library.Library` lets members borrow books but places no cap on how many books one member can hold at once, and it keeps no record of what happened. Add a per-member cap on simultaneous loans and an ordered audit trail of lending events. The trail must also record the lend and return attempts that were rejected, including those rejected by the new cap.
+
+## Requirements
+1. Add the module constant `MAX_LOANS_PER_MEMBER = 10` in `library/lending.py`. `Library.__init__` gains an optional keyword argument `max_loans_per_member: int = MAX_LOANS_PER_MEMBER`. A value below 1 raises `ValueError("max_loans_per_member must be at least 1")`.
+2. The cap applies per member. A member may hold at most `max_loans_per_member` active loans at once, counted across all books. Other members' loans do not count toward it.
+3. A `lend` that would exceed the cap raises `LoanLimitError` with the message `loan limit reached: <limit>`, where `<limit>` is the configured cap. State is unchanged: no loan is created and `copies_available` is unchanged.
+4. `LoanLimitError` is a subclass of `ValueError`. It is defined in `library/lending.py` and exported from the `library` package.
+5. Once a member returns a book, a slot frees up and that member may lend again.
+6. `lend` checks conditions in this order. Unknown isbn or member raises `KeyError` as before. Then "already borrowed" (`ValueError("already borrowed")`). Then the loan cap. Then "no copies available" (`ValueError("no copies available")`). A member at the cap who asks for a book with no copies left therefore gets `LoanLimitError`.
+7. Add `Library.history(member_id=None) -> list[dict]`. It returns the audit trail in the order the events happened (oldest first). With a `member_id` it returns only that member's events, still in order. An unknown `member_id` raises `KeyError("unknown member: <id>")`. The returned list and its dicts are copies: changing them does not change the library's internal record.
+8. Every `lend` that succeeds appends an entry with `action="lend"`, `outcome="ok"` and `reason=None`.
+9. Every `lend` that is rejected by one of the three `ValueError` checks appends an entry with `action="lend"` and `outcome="rejected"` before the error is raised. The `reason` is `"already_borrowed"`, `"limit_reached"` or `"no_copies"` respectively. A `lend` with an unknown isbn or member raises `KeyError` and appends nothing.
+10. Every `return_book` that succeeds appends an entry with `action="return"`, `outcome="ok"` and `reason=None`. A `return_book` for a loan that does not exist appends an entry with `action="return"`, `outcome="rejected"` and `reason="no_loan"` before raising `KeyError("no such loan")`.
+11. Each entry is a dict with exactly the keys `action`, `isbn`, `member_id`, `date` (the `today` argument of the call), `outcome`, `reason` and `active_loans`. `active_loans` is the number of active loans the member holds after the call finished. For a rejected call it is the member's unchanged count, so a rejection caused by the cap has `active_loans` equal to the cap.
+12. Existing behaviour (due dates, fines, `loans_of`, `copies_available`, duplicate checks) is unchanged.
+
+## Public interface
+- `library.lending.MAX_LOANS_PER_MEMBER: int` (value `10`), also importable from `library`.
+- `library.lending.LoanLimitError(ValueError)`, also importable from `library`.
+- `Library(max_loans_per_member: int = MAX_LOANS_PER_MEMBER)`.
+- `Library.history(member_id: str | None = None) -> list[dict]` with entry keys `action` (`"lend"` or `"return"`), `isbn`, `member_id`, `date` (a `datetime.date`), `outcome` (`"ok"` or `"rejected"`), `reason` (`None`, `"already_borrowed"`, `"limit_reached"`, `"no_copies"` or `"no_loan"`) and `active_loans` (int).
+- Error messages: `loan limit reached: <limit>`, `max_loans_per_member must be at least 1`, `unknown member: <id>`.
+
+## Examples
+```python
+lib = Library(max_loans_per_member=1)
+lib.add_book(Book("111", "Dune", copies=2))
+lib.add_book(Book("222", "Emma"))
+lib.add_member(Member("m1", "Ana"))
+lib.lend("111", "m1", date(2026, 3, 1))
+lib.lend("222", "m1", date(2026, 3, 2))   # raises LoanLimitError("loan limit reached: 1")
+lib.history("m1")[-1]
+# {"action": "lend", "isbn": "222", "member_id": "m1", "date": date(2026, 3, 2),
+#  "outcome": "rejected", "reason": "limit_reached", "active_loans": 1}
+lib.return_book("111", "m1", date(2026, 3, 3))
+lib.lend("222", "m1", date(2026, 3, 3))   # succeeds now
+```
+
+# Rules
+1. Output the COMPLETE new content of every non-test file you modify or create. Do not output unchanged files.
+2. Do not edit or delete existing tests and do not add tests.
+3. Use only the standard library and dependencies the repository already uses.
+4. Follow every requirement exactly: names, signatures, error types, exact messages and boundary behaviour.
+
+# Output format (exact)
+=== FILE solution <relative/path> ===
+<complete new file content>
+=== END ===
+(Repeat the FILE section for every file you modify or create. No code fences around file content.
+No text outside the sections.)

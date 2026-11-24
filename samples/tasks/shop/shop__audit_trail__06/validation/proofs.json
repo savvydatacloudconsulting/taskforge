@@ -1,0 +1,99 @@
+{
+  "task_id": "shop__audit_trail__06",
+  "accepted": true,
+  "seconds": 16.09,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 0.72
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 0.8,
+        "tail": "lecting tests/test_tf_audit_trail_06.py _______________\nImportError while importing test module '<repo>\\tests\\test_tf_audit_trail_06.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_audit_trail_06.py:3: in <module>\n    from shop import Cart, CartEvent, checkout\nE   ImportError: cannot import name 'CartEvent' from 'shop' (<repo>\\shop\\__init__.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_audit_trail_06.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.14s\n",
+        "failing_tests": [
+          "tests/test_tf_audit_trail_06.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (11 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 11
+            },
+            "seconds": 0.71
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 11
+            },
+            "seconds": 0.92
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 11
+            },
+            "seconds": 0.77
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 26
+        },
+        "seconds": 0.62
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 10 of 12 broken versions (83%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 10,
+        "survived": [
+          "shop/cart.py: line 45: comparison GtE -> Gt",
+          "shop/cart.py: line 39: constant 0 -> 1"
+        ],
+        "kill_rate": 0.833,
+        "available_sites": 18,
+        "required": 0.6
+      }
+    }
+  ]
+}

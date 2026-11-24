@@ -1,0 +1,148 @@
+=== FILE solution shop/cart.py ===
+from __future__ import annotations
+
+from .catalog import Catalog, Product
+
+
+class QuantityLimitError(ValueError):
+    """Raised when adding to the cart would exceed the per-SKU cap."""
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog, max_per_sku: int | None = None):
+        if max_per_sku is not None:
+            if (
+                isinstance(max_per_sku, bool)
+                or not isinstance(max_per_sku, int)
+                or max_per_sku <= 0
+            ):
+                raise ValueError("max_per_sku must be a positive integer")
+        self.catalog = catalog
+        self.max_per_sku = max_per_sku
+        self._lines: dict[str, int] = {}
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        self.catalog.get(sku)  # raises KeyError for unknown products
+        new_quantity = self._lines.get(sku, 0) + quantity
+        if self.max_per_sku is not None and new_quantity > self.max_per_sku:
+            raise QuantityLimitError(
+                f"limit of {self.max_per_sku} per item exceeded for {sku}"
+            )
+        self._lines[sku] = new_quantity
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        if sku not in self._lines:
+            raise KeyError(f"not in cart: {sku}")
+        if quantity is None or quantity >= self._lines[sku]:
+            del self._lines[sku]
+        else:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self._lines[sku] -= quantity
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def remaining(self, sku: str) -> int | None:
+        if self.max_per_sku is None:
+            return None
+        return self.max_per_sku - self.quantity(sku)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        self._lines.clear()
+=== END ===
+=== FILE solution shop/pricing.py ===
+from __future__ import annotations
+
+TAX_RATE_PERCENT = 10
+
+
+def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on an amount, rounded half up to the nearest cent."""
+    return (amount_cents * rate_percent + 50) // 100
+
+
+def tax_cents_half_even(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on a non-negative amount, rounded to the nearest cent.
+
+    Exact halves are rounded to the nearest even number of cents (banker's rounding).
+    """
+    quotient, remainder = divmod(amount_cents * rate_percent, 100)
+    twice = remainder * 2
+    if twice > 100:
+        return quotient + 1
+    if twice == 100:
+        return quotient + 1 if quotient % 2 == 1 else quotient
+    return quotient
+
+
+def format_money(cents: int) -> str:
+    sign = "-" if cents < 0 else ""
+    cents = abs(cents)
+    return f"{sign}${cents // 100}.{cents % 100:02d}"
+=== END ===
+=== FILE solution shop/checkout.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import tax_cents, tax_cents_half_even
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+
+
+def checkout(cart: Cart, order_id: str, per_unit_tax: bool = False) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    if per_unit_tax:
+        tax = sum(tax_cents_half_even(price) * qty for _sku, qty, price in lines)
+    else:
+        tax = tax_cents(subtotal)
+    order = Order(order_id, lines, subtotal, tax, subtotal + tax)
+    cart.clear()
+    return order
+=== END ===
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart, QuantityLimitError
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents, tax_cents_half_even
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "QuantityLimitError",
+    "checkout",
+    "format_money",
+    "tax_cents",
+    "tax_cents_half_even",
+]
+=== END ===

@@ -1,0 +1,54 @@
+diff --git a/shop/cart.py b/shop/cart.py
+index 722de95..eb5a3a3 100644
+--- a/shop/cart.py
++++ b/shop/cart.py
+@@ -16,6 +16,22 @@ class Cart:
+         self.catalog.get(sku)  # raises KeyError for unknown products
+         self._lines[sku] = self._lines.get(sku, 0) + quantity
+ 
++    def add_all(self, items) -> int:
++        """Add many (sku, quantity) pairs; repeated SKUs are merged by summing.
++
++        Returns the number of distinct SKUs in the input. If any entry is
++        invalid, nothing is added.
++        """
++        merged: dict[str, int] = {}
++        for sku, quantity in items:
++            if quantity <= 0:
++                raise ValueError("quantity must be positive")
++            self.catalog.get(sku)  # raises KeyError for unknown products
++            merged[sku] = merged.get(sku, 0) + quantity
++        for sku, quantity in merged.items():
++            self._lines[sku] = self._lines.get(sku, 0) + quantity
++        return len(merged)
++
+     def remove(self, sku: str, quantity: int | None = None) -> None:
+         if sku not in self._lines:
+             raise KeyError(f"not in cart: {sku}")
+diff --git a/shop/catalog.py b/shop/catalog.py
+index 5ef9403..dd90104 100644
+--- a/shop/catalog.py
++++ b/shop/catalog.py
+@@ -24,6 +24,22 @@ class Catalog:
+             raise ValueError(f"duplicate sku: {product.sku}")
+         self._products[product.sku] = product
+ 
++    def add_all(self, products) -> int:
++        """Add many products at once; identical repeats are ignored.
++
++        Returns the number of newly added products. A repeated SKU with
++        different data raises ValueError and leaves the catalog unchanged.
++        """
++        pending: dict[str, Product] = {}
++        for product in products:
++            existing = pending.get(product.sku, self._products.get(product.sku))
++            if existing is None:
++                pending[product.sku] = product
++            elif existing != product:
++                raise ValueError(f"conflicting sku: {product.sku}")
++        self._products.update(pending)
++        return len(pending)
++
+     def get(self, sku: str) -> Product:
+         try:
+             return self._products[sku]

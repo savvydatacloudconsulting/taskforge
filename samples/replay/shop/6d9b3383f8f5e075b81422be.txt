@@ -1,0 +1,218 @@
+=== TITLE ===
+Tiered shipping fees with member discount and express surcharge, capped
+=== INSTRUCTION ===
+## Background
+Orders currently have no shipping cost. Add a shipping fee that depends on the order subtotal in tiers (the larger the
+subtotal, the cheaper the shipping), and let two independent adjustments stack on top of the tier fee: a member discount
+and an express surcharge. The combined result is limited by a maximum fee. Shipping is not taxed.
+
+## Requirements
+1. Add `shipping_cents(subtotal_cents, express=False, member=False)` to `shop/pricing.py` and export it from `shop`.
+2. The base fee depends on the subtotal tier. A subtotal exactly on a tier edge belongs to the higher (cheaper) tier:
+   - subtotal below 5000 cents: 899 cents
+   - subtotal from 5000 up to but not including 10000 cents: 499 cents
+   - subtotal of 10000 cents or more: 0 cents
+3. If `member` is true, the base fee is halved, rounded half up to a whole cent (for example 899 becomes 450 and 499
+   becomes 250).
+4. If `express` is true, a flat surcharge of 600 cents is added. The surcharge is added AFTER the member discount, and it is
+   added even when the base fee is 0.
+5. The final fee is never more than 1200 cents. The cap is applied last, after both adjustments.
+6. A negative `subtotal_cents` raises `ValueError("subtotal must be non-negative")`.
+7. `Order` gets a new field `shipping_cents: int = 0` (last field, with the default, so existing construction keeps working).
+8. `checkout(cart, order_id, shipping=None, member=False)` gains two optional parameters. `shipping` is `None`
+   (no shipping, behaviour exactly as before), `"standard"` or `"express"`. When it is `"standard"` or `"express"`, the
+   order's `shipping_cents` is `shipping_cents(subtotal, express=(shipping == "express"), member=member)` where subtotal is
+   the cart subtotal before tax. `member` is ignored when `shipping` is `None`.
+9. The order total is `subtotal_cents + tax_cents + shipping_cents`. Tax is still computed from the subtotal only.
+10. Any other value for `shipping` raises `ValueError("unknown shipping method: <value>")` and leaves the cart untouched.
+    An empty cart still raises `ValueError("cart is empty")` as before.
+
+## Public interface
+- `shop.pricing.shipping_cents(subtotal_cents: int, express: bool = False, member: bool = False) -> int`
+  (also importable as `shop.shipping_cents`)
+- `shop.checkout.Order.shipping_cents: int = 0`
+- `shop.checkout.checkout(cart, order_id, shipping=None, member=False) -> Order`
+- Errors: `ValueError("subtotal must be non-negative")`, `ValueError("unknown shipping method: <value>")`.
+
+## Examples
+- `shipping_cents(4999)` -> `899`; `shipping_cents(5000)` -> `499`; `shipping_cents(10000)` -> `0`.
+- `shipping_cents(4000, member=True)` -> `450`.
+- `shipping_cents(4000, express=True)` -> `1200` (899 + 600 = 1499, capped).
+- `shipping_cents(4000, express=True, member=True)` -> `1050` (450 + 600, under the cap).
+- `shipping_cents(10000, express=True)` -> `600`.
+- A cart of 5 notebooks (1200 each, subtotal 6000) checked out with `shipping="standard"` gives tax 600, shipping 499 and
+  total 7099.
+=== FILE solution shop/pricing.py ===
+from __future__ import annotations
+
+TAX_RATE_PERCENT = 10
+
+# (exclusive upper edge in cents, fee in cents); a subtotal on an edge falls in the next tier
+SHIPPING_TIERS = ((5000, 899), (10000, 499))
+EXPRESS_SURCHARGE_CENTS = 600
+SHIPPING_CAP_CENTS = 1200
+
+
+def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on an amount, rounded half up to the nearest cent."""
+    return (amount_cents * rate_percent + 50) // 100
+
+
+def shipping_cents(subtotal_cents: int, express: bool = False, member: bool = False) -> int:
+    """Tiered shipping fee, then member discount, then express surcharge, then the cap."""
+    if subtotal_cents < 0:
+        raise ValueError("subtotal must be non-negative")
+    fee = 0
+    for upper_edge, tier_fee in SHIPPING_TIERS:
+        if subtotal_cents < upper_edge:
+            fee = tier_fee
+            break
+    if member:
+        fee = (fee + 1) // 2
+    if express:
+        fee += EXPRESS_SURCHARGE_CENTS
+    return min(fee, SHIPPING_CAP_CENTS)
+
+
+def format_money(cents: int) -> str:
+    sign = "-" if cents < 0 else ""
+    cents = abs(cents)
+    return f"{sign}${cents // 100}.{cents % 100:02d}"
+=== FILE solution shop/checkout.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import shipping_cents, tax_cents
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    shipping_cents: int = 0
+
+
+def checkout(cart: Cart, order_id: str, shipping: str | None = None, member: bool = False) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    if shipping not in (None, "standard", "express"):
+        raise ValueError(f"unknown shipping method: {shipping}")
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    tax = tax_cents(subtotal)
+    ship = 0
+    if shipping is not None:
+        ship = shipping_cents(subtotal, express=(shipping == "express"), member=member)
+    order = Order(order_id, lines, subtotal, tax, subtotal + tax + ship, ship)
+    cart.clear()
+    return order
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, shipping_cents, tax_cents
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "checkout",
+    "format_money",
+    "shipping_cents",
+    "tax_cents",
+]
+=== FILE test tests/test_tf_tiered_rates_x_rule_stacking_05.py ===
+import pytest
+
+from shop import Order, checkout, shipping_cents
+
+
+def test_tier_edges():
+    assert shipping_cents(0) == 899
+    assert shipping_cents(4999) == 899
+    assert shipping_cents(5000) == 499
+    assert shipping_cents(9999) == 499
+    assert shipping_cents(10000) == 0
+    assert shipping_cents(50000) == 0
+
+
+def test_member_discount_rounds_half_up():
+    assert shipping_cents(4000, member=True) == 450
+    assert shipping_cents(6000, member=True) == 250
+    assert shipping_cents(10000, member=True) == 0
+
+
+def test_express_only_is_capped():
+    assert shipping_cents(4000, express=True) == 1200
+    assert shipping_cents(6000, express=True) == 1099
+    assert shipping_cents(10000, express=True) == 600
+
+
+def test_member_and_express_stack_before_cap():
+    assert shipping_cents(4000, express=True, member=True) == 1050
+    assert shipping_cents(6000, express=True, member=True) == 850
+    assert shipping_cents(20000, express=True, member=True) == 600
+
+
+def test_negative_subtotal_rejected():
+    with pytest.raises(ValueError, match="subtotal must be non-negative"):
+        shipping_cents(-1)
+
+
+def test_order_has_default_shipping_field():
+    order = Order("X", [], 100, 10, 110)
+    assert order.shipping_cents == 0
+
+
+def test_checkout_without_shipping_unchanged(cart):
+    cart.add("BOOK", 5)
+    order = checkout(cart, "A1", member=True)
+    assert order.shipping_cents == 0
+    assert order.total_cents == 6000 + 600
+
+
+def test_checkout_standard_shipping(cart):
+    cart.add("BOOK", 5)
+    order = checkout(cart, "A2", shipping="standard")
+    assert order.subtotal_cents == 6000
+    assert order.tax_cents == 600
+    assert order.shipping_cents == 499
+    assert order.total_cents == 7099
+    assert cart.is_empty()
+
+
+def test_checkout_express_member_stacking(cart):
+    cart.add("BOOK", 5)
+    order = checkout(cart, "A3", shipping="express", member=True)
+    assert order.shipping_cents == 850
+    assert order.total_cents == 6000 + 600 + 850
+
+
+def test_checkout_express_cap(cart):
+    cart.add("BOOK", 3)
+    order = checkout(cart, "A4", shipping="express")
+    assert order.subtotal_cents == 3600
+    assert order.shipping_cents == 1200
+    assert order.total_cents == 3600 + 360 + 1200
+
+
+def test_checkout_unknown_shipping_leaves_cart(cart):
+    cart.add("MUG", 2)
+    with pytest.raises(ValueError, match="unknown shipping method: overnight"):
+        checkout(cart, "A5", shipping="overnight")
+    assert cart.quantity("MUG") == 2
+
+
+def test_checkout_empty_cart_still_rejected(cart):
+    with pytest.raises(ValueError, match="cart is empty"):
+        checkout(cart, "A6", shipping="standard")
+=== END ===

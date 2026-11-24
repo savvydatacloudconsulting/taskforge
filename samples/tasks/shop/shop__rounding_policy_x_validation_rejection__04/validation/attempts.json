@@ -1,0 +1,20 @@
+{
+  "task_id": "shop__rounding_policy_x_validation_rejection__04",
+  "status": "accepted",
+  "title": "Selectable tax rounding modes with per-line tax and strict validation at checkout",
+  "recipes": [
+    "rounding_policy",
+    "validation_rejection"
+  ],
+  "reason": "",
+  "nearest_task": "shop__time_window__01",
+  "nearest_distance": 0.7777,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 21.251262699999643
+    }
+  ]
+}

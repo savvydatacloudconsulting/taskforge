@@ -1,0 +1,95 @@
+diff --git a/library/__init__.py b/library/__init__.py
+index a92bc96..0ba2dce 100644
+--- a/library/__init__.py
++++ b/library/__init__.py
+@@ -1,6 +1,20 @@
+ """A tiny library-lending package used as a second demo repository for TaskForge."""
+ 
+-from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
++from .lending import (
++    FINE_CENTS_PER_DAY,
++    FINE_ROUND_UNIT_CENTS,
++    LOAN_DAYS,
++    Library,
++    discounted_fine,
++)
+ from .models import Book, Member
+ 
+-__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
++__all__ = [
++    "Book",
++    "Member",
++    "Library",
++    "LOAN_DAYS",
++    "FINE_CENTS_PER_DAY",
++    "FINE_ROUND_UNIT_CENTS",
++    "discounted_fine",
++]
+diff --git a/library/lending.py b/library/lending.py
+index db126a4..76bcd06 100644
+--- a/library/lending.py
++++ b/library/lending.py
+@@ -6,6 +6,25 @@ from .models import Book, Member
+ 
+ LOAN_DAYS = 14
+ FINE_CENTS_PER_DAY = 50
++FINE_ROUND_UNIT_CENTS = 5
++
++
++def _check_percent(percent: int) -> None:
++    if not 0 <= percent <= 100:
++        raise ValueError("percent must be between 0 and 100")
++
++
++def discounted_fine(fine_cents: int, percent: int) -> int:
++    """Apply a percentage discount, rounding to the nearest 5 cents (half up, minimum 5 cents)."""
++    if fine_cents < 0:
++        raise ValueError("fine_cents must not be negative")
++    _check_percent(percent)
++    if fine_cents == 0 or percent == 100:
++        return 0
++    numerator = fine_cents * (100 - percent)
++    denominator = 100 * FINE_ROUND_UNIT_CENTS
++    units = (2 * numerator + denominator) // (2 * denominator)
++    return max(1, units) * FINE_ROUND_UNIT_CENTS
+ 
+ 
+ class Library:
+@@ -15,6 +34,7 @@ class Library:
+         self._books: dict[str, Book] = {}
+         self._members: dict[str, Member] = {}
+         self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
++        self._discounts: dict[str, int] = {}  # member_id -> fine discount percent
+ 
+     def add_book(self, book: Book) -> None:
+         if book.isbn in self._books:
+@@ -26,6 +46,12 @@ class Library:
+             raise ValueError(f"duplicate member: {member.member_id}")
+         self._members[member.member_id] = member
+ 
++    def set_fine_discount(self, member_id: str, percent: int) -> None:
++        """Set the percentage discount applied to this member's late fines."""
++        self._member(member_id)
++        _check_percent(percent)
++        self._discounts[member_id] = percent
++
+     def copies_available(self, isbn: str) -> int:
+         book = self._book(isbn)
+         on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+@@ -44,13 +70,14 @@ class Library:
+         return due
+ 
+     def return_book(self, isbn: str, member_id: str, today: date) -> int:
+-        """Take a book back and return the late fine in cents."""
++        """Take a book back and return the late fine in cents, after any member discount."""
+         key = (isbn, member_id)
+         if key not in self._loans:
+             raise KeyError("no such loan")
+         due = self._loans.pop(key)
+         late_days = max(0, (today - due).days)
+-        return late_days * FINE_CENTS_PER_DAY
++        fine = late_days * FINE_CENTS_PER_DAY
++        return discounted_fine(fine, self._discounts.get(member_id, 0))
+ 
+     def loans_of(self, member_id: str) -> list[str]:
+         self._member(member_id)

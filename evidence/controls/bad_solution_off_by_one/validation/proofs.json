@@ -1,0 +1,71 @@
+{
+  "task_id": "control__bad_solution_off_by_one",
+  "accepted": false,
+  "seconds": 2.58,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 1.1
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (3 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 2,
+          "FAILED": 3
+        },
+        "seconds": 0.97,
+        "tail": "art.remove(\"BOOK\", 4)\n        cart.add(\"BOOK\", 4)\n        assert cart.quantity(\"BOOK\") == 10\n>       with pytest.raises(ValueError):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE ValueError\n\ntests\\test_tf_limit.py:33: Failed\n=================================== PASSES ====================================\n=========================== short test summary info ===========================\nPASSED tests/test_tf_limit.py::test_can_add_up_to_the_limit\nPASSED tests/test_tf_limit.py::test_limit_is_per_product\nFAILED tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected - Fai...\nFAILED tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged\nFAILED tests/test_tf_limit.py::test_removing_makes_room_again - Failed: DID N...\n3 failed, 2 passed in 0.08s\n",
+        "failing_tests": [
+          "tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged",
+          "tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected",
+          "tests/test_tf_limit.py::test_removing_makes_room_again"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "fail",
+      "detail": "the feature tests FAIL with the reference solution applied",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 1,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 2,
+              "FAILED": 3
+            },
+            "seconds": 0.94
+          }
+        ],
+        "tail": "e\")\n        self.catalog.get(sku)  # raises KeyError for unknown products\n        new_quantity = self._lines.get(sku, 0) + quantity\n        if new_quantity >= MAX_PER_LINE:\n>           raise ValueError(f\"limit of {MAX_PER_LINE} per product exceeded\")\nE           ValueError: limit of 10 per product exceeded\n\nshop\\cart.py:21: ValueError\n_______________________ test_removing_makes_room_again ________________________\n\ncart = <shop.cart.Cart object at 0x000001609BD929E0>\n\n    def test_removing_makes_room_again(cart):\n>       cart.add(\"BOOK\", 10)\n\ntests\\test_tf_limit.py:29: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <shop.cart.Cart object at 0x000001609BD929E0>, sku = 'BOOK'\nquantity = 10\n\n    def add(self, sku: str, quantity: int = 1) -> None:\n        if quantity <= 0:\n            raise ValueError(\"quantity must be positive\")\n        self.catalog.get(sku)  # raises KeyError for unknown products\n        new_quantity = self._lines.get(sku, 0) + quantity\n        if new_quantity >= MAX_PER_LINE:\n>           raise ValueError(f\"limit of {MAX_PER_LINE} per product exceeded\")\nE           ValueError: limit of 10 per product exceeded\n\nshop\\cart.py:21: ValueError\n=================================== PASSES ====================================\n=========================== short test summary info ===========================\nPASSED tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected\nPASSED tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged\nFAILED tests/test_tf_limit.py::test_can_add_up_to_the_limit - ValueError: lim...\nFAILED tests/test_tf_limit.py::test_limit_is_per_product - ValueError: limit ...\nFAILED tests/test_tf_limit.py::test_removing_makes_room_again - ValueError: l...\n3 failed, 2 passed in 0.08s\n"
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "skipped",
+      "detail": "skipped: needs 'passes_after' first",
+      "evidence": {}
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "skipped",
+      "detail": "skipped: needs 'passes_after' first",
+      "evidence": {}
+    }
+  ]
+}

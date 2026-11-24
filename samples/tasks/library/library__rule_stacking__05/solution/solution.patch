@@ -1,0 +1,95 @@
+diff --git a/library/__init__.py b/library/__init__.py
+index a92bc96..d732cd8 100644
+--- a/library/__init__.py
++++ b/library/__init__.py
+@@ -1,6 +1,22 @@
+ """A tiny library-lending package used as a second demo repository for TaskForge."""
+ 
+-from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
++from .lending import (
++    DEMAND_MULTIPLIER,
++    FINE_CENTS_PER_DAY,
++    LOAN_DAYS,
++    MAX_DAILY_RATE_CENTS,
++    REDUCED_MEMBER_DISCOUNT_CENTS,
++    Library,
++)
+ from .models import Book, Member
+ 
+-__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
++__all__ = [
++    "Book",
++    "Member",
++    "Library",
++    "LOAN_DAYS",
++    "FINE_CENTS_PER_DAY",
++    "DEMAND_MULTIPLIER",
++    "REDUCED_MEMBER_DISCOUNT_CENTS",
++    "MAX_DAILY_RATE_CENTS",
++]
+diff --git a/library/lending.py b/library/lending.py
+index db126a4..7bc6821 100644
+--- a/library/lending.py
++++ b/library/lending.py
+@@ -6,6 +6,9 @@ from .models import Book, Member
+ 
+ LOAN_DAYS = 14
+ FINE_CENTS_PER_DAY = 50
++DEMAND_MULTIPLIER = 3
++REDUCED_MEMBER_DISCOUNT_CENTS = 20
++MAX_DAILY_RATE_CENTS = 140
+ 
+ 
+ class Library:
+@@ -15,6 +18,8 @@ class Library:
+         self._books: dict[str, Book] = {}
+         self._members: dict[str, Member] = {}
+         self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
++        self._high_demand: set[str] = set()
++        self._reduced_rate: set[str] = set()
+ 
+     def add_book(self, book: Book) -> None:
+         if book.isbn in self._books:
+@@ -43,6 +48,33 @@ class Library:
+         self._loans[(isbn, member_id)] = due
+         return due
+ 
++    def set_high_demand(self, isbn: str, flag: bool) -> None:
++        """Mark or unmark a book as high-demand (heavier late fines)."""
++        self._book(isbn)
++        if flag:
++            self._high_demand.add(isbn)
++        else:
++            self._high_demand.discard(isbn)
++
++    def set_reduced_rate(self, member_id: str, flag: bool) -> None:
++        """Mark or unmark a member as reduced-rate (lighter late fines)."""
++        self._member(member_id)
++        if flag:
++            self._reduced_rate.add(member_id)
++        else:
++            self._reduced_rate.discard(member_id)
++
++    def daily_fine_rate(self, isbn: str, member_id: str) -> int:
++        """Daily late fine in cents: surcharge first, then discount, then the cap."""
++        self._book(isbn)
++        self._member(member_id)
++        rate = FINE_CENTS_PER_DAY
++        if isbn in self._high_demand:
++            rate *= DEMAND_MULTIPLIER
++        if member_id in self._reduced_rate:
++            rate -= REDUCED_MEMBER_DISCOUNT_CENTS
++        return min(rate, MAX_DAILY_RATE_CENTS)
++
+     def return_book(self, isbn: str, member_id: str, today: date) -> int:
+         """Take a book back and return the late fine in cents."""
+         key = (isbn, member_id)
+@@ -50,7 +82,7 @@ class Library:
+             raise KeyError("no such loan")
+         due = self._loans.pop(key)
+         late_days = max(0, (today - due).days)
+-        return late_days * FINE_CENTS_PER_DAY
++        return late_days * self.daily_fine_rate(isbn, member_id)
+ 
+     def loans_of(self, member_id: str) -> list[str]:
+         self._member(member_id)

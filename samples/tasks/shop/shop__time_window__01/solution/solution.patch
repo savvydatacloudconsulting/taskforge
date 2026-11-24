@@ -1,0 +1,94 @@
+diff --git a/shop/__init__.py b/shop/__init__.py
+index 3001edd..031a8a8 100644
+--- a/shop/__init__.py
++++ b/shop/__init__.py
+@@ -4,5 +4,15 @@ from .cart import Cart
+ from .catalog import Catalog, Product
+ from .checkout import Order, checkout
+ from .pricing import format_money, tax_cents
++from .promotions import Promotion
+ 
+-__all__ = ["Cart", "Catalog", "Product", "Order", "checkout", "format_money", "tax_cents"]
++__all__ = [
++    "Cart",
++    "Catalog",
++    "Product",
++    "Order",
++    "Promotion",
++    "checkout",
++    "format_money",
++    "tax_cents",
++]
+diff --git a/shop/checkout.py b/shop/checkout.py
+index cf0070b..696e349 100644
+--- a/shop/checkout.py
++++ b/shop/checkout.py
+@@ -4,6 +4,7 @@ from dataclasses import dataclass
+ 
+ from .cart import Cart
+ from .pricing import tax_cents
++from .promotions import Promotion
+ 
+ 
+ @dataclass
+@@ -13,15 +14,27 @@ class Order:
+     subtotal_cents: int
+     tax_cents: int
+     total_cents: int
++    discount_cents: int = 0
+ 
+ 
+-def checkout(cart: Cart, order_id: str) -> Order:
++def checkout(cart: Cart, order_id: str, promotion: Promotion | None = None, now=None) -> Order:
+     """Turn a cart into an order. The cart is emptied afterwards."""
+     if cart.is_empty():
+         raise ValueError("cart is empty")
++    discount = 0
++    if promotion is not None:
++        if now is None:
++            raise ValueError("now is required when a promotion is given")
++        if promotion.is_active(now):
++            eligible = sum(
++                p.price_cents * qty
++                for p, qty in cart.lines()
++                if promotion.category is None or p.category == promotion.category
++            )
++            discount = eligible * promotion.percent_off // 100
+     lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+     subtotal = cart.subtotal_cents()
+-    tax = tax_cents(subtotal)
+-    order = Order(order_id, lines, subtotal, tax, subtotal + tax)
++    tax = tax_cents(subtotal - discount)
++    order = Order(order_id, lines, subtotal, tax, subtotal - discount + tax, discount)
+     cart.clear()
+     return order
+diff --git a/shop/promotions.py b/shop/promotions.py
+new file mode 100644
+index 0000000..57ffe99
+--- /dev/null
++++ b/shop/promotions.py
+@@ -0,0 +1,24 @@
++from __future__ import annotations
++
++from dataclasses import dataclass
++from datetime import datetime
++
++
++@dataclass(frozen=True)
++class Promotion:
++    """A percentage-off promotion that is only valid inside [start, end)."""
++
++    name: str
++    percent_off: int
++    start: datetime
++    end: datetime
++    category: str | None = None
++
++    def __post_init__(self) -> None:
++        if not 1 <= self.percent_off <= 100:
++            raise ValueError("percent_off must be between 1 and 100")
++        if self.end <= self.start:
++            raise ValueError("end must be after start")
++
++    def is_active(self, now: datetime) -> bool:
++        return self.start <= now < self.end

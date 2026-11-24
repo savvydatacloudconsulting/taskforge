@@ -1,0 +1,19 @@
+{
+  "task_id": "shop__rule_stacking__03",
+  "status": "accepted",
+  "title": "Stack category discounts with a flat coupon under a percentage cap",
+  "recipes": [
+    "rule_stacking"
+  ],
+  "reason": "",
+  "nearest_task": "shop__time_window__01",
+  "nearest_distance": 0.6744,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 21.517853600000308
+    }
+  ]
+}

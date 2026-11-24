@@ -1,0 +1,96 @@
+{
+  "task_id": "library__audit_trail_x_quantity_limit__06",
+  "accepted": true,
+  "seconds": 17.21,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (9 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 9
+      },
+      "seconds": 0.88
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 0.86,
+        "tail": "epo>\\tests\\test_tf_audit_trail_x_quantity_limit_06.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_audit_trail_x_quantity_limit_06.py:5: in <module>\n    from library import Book, Library, LoanLimitError, Member, MAX_LOANS_PER_MEMBER\nE   ImportError: cannot import name 'LoanLimitError' from 'library' (<repo>\\library\\__init__.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_audit_trail_x_quantity_limit_06.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.14s\n",
+        "failing_tests": [
+          "tests/test_tf_audit_trail_x_quantity_limit_06.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.75
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.85
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 1.07
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 9 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 21
+        },
+        "seconds": 0.84
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 12 of 12 broken versions (100%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 12,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 16,
+        "required": 0.6
+      }
+    }
+  ]
+}

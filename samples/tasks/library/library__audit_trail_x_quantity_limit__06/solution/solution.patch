@@ -1,0 +1,122 @@
+diff --git a/library/__init__.py b/library/__init__.py
+index a92bc96..b80424e 100644
+--- a/library/__init__.py
++++ b/library/__init__.py
+@@ -1,6 +1,20 @@
+ """A tiny library-lending package used as a second demo repository for TaskForge."""
+ 
+-from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
++from .lending import (
++    FINE_CENTS_PER_DAY,
++    LOAN_DAYS,
++    MAX_LOANS_PER_MEMBER,
++    Library,
++    LoanLimitError,
++)
+ from .models import Book, Member
+ 
+-__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
++__all__ = [
++    "Book",
++    "Member",
++    "Library",
++    "LoanLimitError",
++    "LOAN_DAYS",
++    "FINE_CENTS_PER_DAY",
++    "MAX_LOANS_PER_MEMBER",
++]
+diff --git a/library/lending.py b/library/lending.py
+index db126a4..be2fb37 100644
+--- a/library/lending.py
++++ b/library/lending.py
+@@ -6,15 +6,24 @@ from .models import Book, Member
+ 
+ LOAN_DAYS = 14
+ FINE_CENTS_PER_DAY = 50
++MAX_LOANS_PER_MEMBER = 10
++
++
++class LoanLimitError(ValueError):
++    """Raised when a member already holds the maximum number of loans."""
+ 
+ 
+ class Library:
+     """Books, members and who has borrowed what. Dates are always passed in."""
+ 
+-    def __init__(self) -> None:
++    def __init__(self, max_loans_per_member: int = MAX_LOANS_PER_MEMBER) -> None:
++        if max_loans_per_member < 1:
++            raise ValueError("max_loans_per_member must be at least 1")
++        self._max_loans = max_loans_per_member
+         self._books: dict[str, Book] = {}
+         self._members: dict[str, Member] = {}
+         self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
++        self._history: list[dict] = []
+ 
+     def add_book(self, book: Book) -> None:
+         if book.isbn in self._books:
+@@ -36,26 +45,61 @@ class Library:
+         self._book(isbn)
+         self._member(member_id)
+         if (isbn, member_id) in self._loans:
+-            raise ValueError("already borrowed")
++            raise self._reject("lend", isbn, member_id, today, "already_borrowed",
++                               ValueError("already borrowed"))
++        if self._active_loans(member_id) >= self._max_loans:
++            raise self._reject("lend", isbn, member_id, today, "limit_reached",
++                               LoanLimitError(f"loan limit reached: {self._max_loans}"))
+         if self.copies_available(isbn) <= 0:
+-            raise ValueError("no copies available")
++            raise self._reject("lend", isbn, member_id, today, "no_copies",
++                               ValueError("no copies available"))
+         due = today + timedelta(days=LOAN_DAYS)
+         self._loans[(isbn, member_id)] = due
++        self._record("lend", isbn, member_id, today, "ok", None)
+         return due
+ 
+     def return_book(self, isbn: str, member_id: str, today: date) -> int:
+         """Take a book back and return the late fine in cents."""
+         key = (isbn, member_id)
+         if key not in self._loans:
+-            raise KeyError("no such loan")
++            raise self._reject("return", isbn, member_id, today, "no_loan",
++                               KeyError("no such loan"))
+         due = self._loans.pop(key)
+         late_days = max(0, (today - due).days)
++        self._record("return", isbn, member_id, today, "ok", None)
+         return late_days * FINE_CENTS_PER_DAY
+ 
+     def loans_of(self, member_id: str) -> list[str]:
+         self._member(member_id)
+         return sorted(i for (i, m) in self._loans if m == member_id)
+ 
++    def history(self, member_id: str | None = None) -> list[dict]:
++        """Audit trail, oldest first, optionally limited to one member."""
++        if member_id is not None:
++            self._member(member_id)
++        return [dict(e) for e in self._history
++                if member_id is None or e["member_id"] == member_id]
++
++    def _active_loans(self, member_id: str) -> int:
++        return sum(1 for (_i, m) in self._loans if m == member_id)
++
++    def _record(self, action: str, isbn: str, member_id: str, today: date,
++                outcome: str, reason: str | None) -> None:
++        self._history.append({
++            "action": action,
++            "isbn": isbn,
++            "member_id": member_id,
++            "date": today,
++            "outcome": outcome,
++            "reason": reason,
++            "active_loans": self._active_loans(member_id),
++        })
++
++    def _reject(self, action: str, isbn: str, member_id: str, today: date,
++                reason: str, error: Exception) -> Exception:
++        self._record(action, isbn, member_id, today, "rejected", reason)
++        return error
++
+     def _book(self, isbn: str) -> Book:
+         try:
+             return self._books[isbn]

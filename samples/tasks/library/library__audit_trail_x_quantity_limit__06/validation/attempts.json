@@ -1,0 +1,20 @@
+{
+  "task_id": "library__audit_trail_x_quantity_limit__06",
+  "status": "accepted",
+  "title": "Per-member loan cap with an audit trail of lending events",
+  "recipes": [
+    "audit_trail",
+    "quantity_limit"
+  ],
+  "reason": "",
+  "nearest_task": "library__rounding_policy__04",
+  "nearest_distance": 0.7626,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 19.24749679999877
+    }
+  ]
+}

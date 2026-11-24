@@ -1,0 +1,215 @@
+[SYSTEM]
+You are a careful software engineer. You implement feature requests in existing code. You follow the requested output format exactly, with no commentary outside it.
+
+[USER]
+# Task
+Implement the feature request below in the repository shown. Hidden tests will check your work against the
+Requirements and the Public interface. You cannot see them. The existing tests must keep passing.
+
+# Repository
+name: library
+language: python
+test command: {python} -m pytest -q
+
+## File tree
+library/__init__.py
+library/lending.py
+library/models.py
+tests/conftest.py
+tests/test_lending.py
+
+## FILE library/__init__.py (full content)
+```
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
+from .models import Book, Member
+
+__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
+```
+
+## FILE library/lending.py (full content)
+```
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+```
+
+## FILE library/models.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Book:
+    isbn: str
+    title: str
+    copies: int = 1
+
+
+@dataclass(frozen=True)
+class Member:
+    member_id: str
+    name: str
+```
+
+## Existing tests (2 files): tests/conftest.py, tests/test_lending.py
+## Example test file tests/conftest.py (style reference)
+```
+from datetime import date
+
+import pytest
+
+from library import Book, Library, Member
+
+TODAY = date(2026, 3, 1)
+
+
+@pytest.fixture
+def lib():
+    library = Library()
+    library.add_book(Book("111", "Dune", copies=2))
+    library.add_book(Book("222", "Emma", copies=1))
+    library.add_member(Member("m1", "Ana"))
+    library.add_member(Member("m2", "Ben"))
+    return library
+
+
+@pytest.fixture
+def today():
+    return TODAY
+```
+
+# Feature request
+## Background
+The library occasionally runs a "fine amnesty" campaign: for a limited period, members who bring overdue books back
+are not charged a late fine. Whether the amnesty applies depends only on the date on which the book is **returned**
+(the `today` argument of `Library.return_book`), not on when the book was borrowed or when it was due. The current
+date must always be passed in; nothing may read the real clock.
+
+## Requirements
+1. `Library` gains a single, optional amnesty window. Initially no amnesty is configured.
+2. `Library.set_fine_amnesty(start, end)` configures the window. The window is half-open: it includes `start` and
+   excludes `end`. A date `d` is inside the window when `start <= d < end`.
+3. `set_fine_amnesty` raises `ValueError("invalid amnesty window")` when `end <= start`. In that case any previously
+   configured window must be left unchanged.
+4. Calling `set_fine_amnesty` again replaces the previously configured window (there is never more than one window).
+5. `Library.clear_fine_amnesty()` removes the configured window. It is safe to call when none is configured.
+6. `Library.is_amnesty_active(today)` returns `True` when an amnesty window is configured and `today` is inside it,
+   otherwise `False`.
+7. `Library.return_book(isbn, member_id, today)` returns `0` as the fine whenever `is_amnesty_active(today)` is `True`,
+   even if the book is overdue. The loan is still removed exactly as before (the copy becomes available again and the
+   book disappears from `loans_of`).
+8. When the amnesty is not active on the return date (no window, before `start`, on or after `end`), the fine is
+   computed exactly as before (`FINE_CENTS_PER_DAY` per late day).
+9. Errors from `return_book` are unchanged: returning a book that is not on loan still raises `KeyError("no such loan")`,
+   even if an amnesty is active.
+
+## Public interface
+- `Library.set_fine_amnesty(self, start: date, end: date) -> None`
+  - raises `ValueError` with message `invalid amnesty window` if `end <= start`.
+- `Library.clear_fine_amnesty(self) -> None`
+- `Library.is_amnesty_active(self, today: date) -> bool`
+- `Library.return_book(self, isbn: str, member_id: str, today: date) -> int` (existing; behaviour extended as above)
+
+No new constants or modules are required. `LOAN_DAYS` is 14 and `FINE_CENTS_PER_DAY` is 50.
+
+## Examples
+```python
+from datetime import date
+from library import Book, Library, Member
+
+lib = Library()
+lib.add_book(Book("111", "Dune"))
+lib.add_member(Member("m1", "Ana"))
+lib.lend("111", "m1", date(2026, 3, 1))          # due 2026-03-15
+
+lib.set_fine_amnesty(date(2026, 3, 18), date(2026, 3, 25))
+lib.is_amnesty_active(date(2026, 3, 18))          # True  (start is inclusive)
+lib.is_amnesty_active(date(2026, 3, 25))          # False (end is exclusive)
+lib.return_book("111", "m1", date(2026, 3, 20))   # 0 instead of 250
+
+lib.lend("111", "m1", date(2026, 3, 1))
+lib.return_book("111", "m1", date(2026, 3, 25))   # 500: 10 days late, amnesty over
+```
+
+# Rules
+1. Output the COMPLETE new content of every non-test file you modify or create. Do not output unchanged files.
+2. Do not edit or delete existing tests and do not add tests.
+3. Use only the standard library and dependencies the repository already uses.
+4. Follow every requirement exactly: names, signatures, error types, exact messages and boundary behaviour.
+
+# Output format (exact)
+=== FILE solution <relative/path> ===
+<complete new file content>
+=== END ===
+(Repeat the FILE section for every file you modify or create. No code fences around file content.
+No text outside the sections.)

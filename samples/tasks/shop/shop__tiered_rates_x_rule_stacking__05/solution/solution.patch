@@ -1,0 +1,97 @@
+diff --git a/shop/__init__.py b/shop/__init__.py
+index 3001edd..c799787 100644
+--- a/shop/__init__.py
++++ b/shop/__init__.py
+@@ -3,6 +3,15 @@
+ from .cart import Cart
+ from .catalog import Catalog, Product
+ from .checkout import Order, checkout
+-from .pricing import format_money, tax_cents
++from .pricing import format_money, shipping_cents, tax_cents
+ 
+-__all__ = ["Cart", "Catalog", "Product", "Order", "checkout", "format_money", "tax_cents"]
++__all__ = [
++    "Cart",
++    "Catalog",
++    "Product",
++    "Order",
++    "checkout",
++    "format_money",
++    "shipping_cents",
++    "tax_cents",
++]
+diff --git a/shop/checkout.py b/shop/checkout.py
+index cf0070b..a940771 100644
+--- a/shop/checkout.py
++++ b/shop/checkout.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
+ from dataclasses import dataclass
+ 
+ from .cart import Cart
+-from .pricing import tax_cents
++from .pricing import shipping_cents, tax_cents
+ 
+ 
+ @dataclass
+@@ -13,15 +13,21 @@ class Order:
+     subtotal_cents: int
+     tax_cents: int
+     total_cents: int
++    shipping_cents: int = 0
+ 
+ 
+-def checkout(cart: Cart, order_id: str) -> Order:
++def checkout(cart: Cart, order_id: str, shipping: str | None = None, member: bool = False) -> Order:
+     """Turn a cart into an order. The cart is emptied afterwards."""
+     if cart.is_empty():
+         raise ValueError("cart is empty")
++    if shipping not in (None, "standard", "express"):
++        raise ValueError(f"unknown shipping method: {shipping}")
+     lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+     subtotal = cart.subtotal_cents()
+     tax = tax_cents(subtotal)
+-    order = Order(order_id, lines, subtotal, tax, subtotal + tax)
++    ship = 0
++    if shipping is not None:
++        ship = shipping_cents(subtotal, express=(shipping == "express"), member=member)
++    order = Order(order_id, lines, subtotal, tax, subtotal + tax + ship, ship)
+     cart.clear()
+     return order
+diff --git a/shop/pricing.py b/shop/pricing.py
+index 42bb21c..6d345b4 100644
+--- a/shop/pricing.py
++++ b/shop/pricing.py
+@@ -2,12 +2,33 @@ from __future__ import annotations
+ 
+ TAX_RATE_PERCENT = 10
+ 
++# (exclusive upper edge in cents, fee in cents); a subtotal on an edge falls in the next tier
++SHIPPING_TIERS = ((5000, 899), (10000, 499))
++EXPRESS_SURCHARGE_CENTS = 600
++SHIPPING_CAP_CENTS = 1200
++
+ 
+ def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+     """Tax on an amount, rounded half up to the nearest cent."""
+     return (amount_cents * rate_percent + 50) // 100
+ 
+ 
++def shipping_cents(subtotal_cents: int, express: bool = False, member: bool = False) -> int:
++    """Tiered shipping fee, then member discount, then express surcharge, then the cap."""
++    if subtotal_cents < 0:
++        raise ValueError("subtotal must be non-negative")
++    fee = 0
++    for upper_edge, tier_fee in SHIPPING_TIERS:
++        if subtotal_cents < upper_edge:
++            fee = tier_fee
++            break
++    if member:
++        fee = (fee + 1) // 2
++    if express:
++        fee += EXPRESS_SURCHARGE_CENTS
++    return min(fee, SHIPPING_CAP_CENTS)
++
++
+ def format_money(cents: int) -> str:
+     sign = "-" if cents < 0 else ""
+     cents = abs(cents)

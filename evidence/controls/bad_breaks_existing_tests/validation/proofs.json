@@ -1,0 +1,111 @@
+{
+  "task_id": "control__bad_breaks_existing_tests",
+  "accepted": false,
+  "seconds": 18.05,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 1.1
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (3 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 2,
+          "FAILED": 3
+        },
+        "seconds": 0.96,
+        "tail": "art.remove(\"BOOK\", 4)\n        cart.add(\"BOOK\", 4)\n        assert cart.quantity(\"BOOK\") == 10\n>       with pytest.raises(ValueError):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE ValueError\n\ntests\\test_tf_limit.py:33: Failed\n=================================== PASSES ====================================\n=========================== short test summary info ===========================\nPASSED tests/test_tf_limit.py::test_can_add_up_to_the_limit\nPASSED tests/test_tf_limit.py::test_limit_is_per_product\nFAILED tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected - Fai...\nFAILED tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged\nFAILED tests/test_tf_limit.py::test_removing_makes_room_again - Failed: DID N...\n3 failed, 2 passed in 0.08s\n",
+        "failing_tests": [
+          "tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged",
+          "tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected",
+          "tests/test_tf_limit.py::test_removing_makes_room_again"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (5 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 5
+            },
+            "seconds": 0.84
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 5
+            },
+            "seconds": 0.9
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 5
+            },
+            "seconds": 0.98
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "fail",
+      "detail": "the full test suite fails with the solution applied (broken: tests/test_pricing_checkout.py::test_tax_rounds_half_up)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 19,
+          "FAILED": 1
+        },
+        "seconds": 0.97,
+        "tail": "===================== FAILURES ===================================\n___________________________ test_tax_rounds_half_up ___________________________\n\n    def test_tax_rounds_half_up():\n        assert tax_cents(1000) == 100\n>       assert tax_cents(15) == 2  # 1.5 rounds up\n        ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       assert 1 == 2\nE        +  where 1 = tax_cents(15)\n\ntests\\test_pricing_checkout.py:8: AssertionError\n=================================== PASSES ====================================\n=========================== short test summary info ===========================\nPASSED tests/test_cart.py::test_add_and_quantity\nPASSED tests/test_cart.py::test_add_rejects_non_positive_quantity\nPASSED tests/test_cart.py::test_add_unknown_product\nPASSED tests/test_cart.py::test_remove_partial_and_full\nPASSED tests/test_cart.py::test_remove_missing_line\nPASSED tests/test_cart.py::test_subtotal\nPASSED tests/test_cart.py::test_clear_and_is_empty\nPASSED tests/test_catalog.py::test_get_returns_product\nPASSED tests/test_catalog.py::test_get_unknown_sku_raises\nPASSED tests/test_catalog.py::test_duplicate_sku_rejected\nPASSED tests/test_catalog.py::test_by_category\nPASSED tests/test_pricing_checkout.py::test_format_money\nPASSED tests/test_pricing_checkout.py::test_checkout_totals_and_clears_cart\nPASSED tests/test_pricing_checkout.py::test_checkout_empty_cart\nPASSED tests/test_tf_limit.py::test_can_add_up_to_the_limit\nPASSED tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected\nPASSED tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged\nPASSED tests/test_tf_limit.py::test_limit_is_per_product\nPASSED tests/test_tf_limit.py::test_removing_makes_room_again\nFAILED tests/test_pricing_checkout.py::test_tax_rounds_half_up - assert 1 == 2\n1 failed, 19 passed in 0.11s\n",
+        "broken_tests": [
+          "tests/test_pricing_checkout.py::test_tax_rounds_half_up"
+        ]
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "fail",
+      "detail": "tests caught only 5 of 11 broken versions (45%, need 60%)",
+      "evidence": {
+        "mutants": 11,
+        "killed": 5,
+        "survived": [
+          "shop/pricing.py: line 8: arithmetic Mult -> FloorDiv",
+          "shop/pricing.py: line 8: constant 0 -> 1",
+          "shop/pricing.py: line 8: arithmetic FloorDiv -> Mult",
+          "shop/pricing.py: line 8: return value replaced by None",
+          "shop/pricing.py: line 8: constant 100 -> 101",
+          "shop/pricing.py: line 8: arithmetic Add -> Sub"
+        ],
+        "kill_rate": 0.455,
+        "available_sites": 11,
+        "required": 0.6
+      }
+    }
+  ]
+}

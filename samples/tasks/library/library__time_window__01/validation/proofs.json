@@ -1,0 +1,105 @@
+{
+  "task_id": "library__time_window__01",
+  "accepted": true,
+  "seconds": 17.52,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (9 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 9
+      },
+      "seconds": 0.88
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (10 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 10
+        },
+        "seconds": 1.15,
+        "tail": "_01.py::test_return_inside_window_has_no_fine\nFAILED tests/test_tf_time_window_01.py::test_start_is_inclusive - AttributeEr...\nFAILED tests/test_tf_time_window_01.py::test_end_is_exclusive - AttributeErro...\nFAILED tests/test_tf_time_window_01.py::test_before_window_still_fined - Attr...\nFAILED tests/test_tf_time_window_01.py::test_not_active_without_window - Attr...\nFAILED tests/test_tf_time_window_01.py::test_invalid_window_rejected_and_keeps_old_window\nFAILED tests/test_tf_time_window_01.py::test_new_window_replaces_old - Attrib...\nFAILED tests/test_tf_time_window_01.py::test_clear_amnesty - AttributeError: ...\nFAILED tests/test_tf_time_window_01.py::test_amnesty_return_still_removes_loan\nFAILED tests/test_tf_time_window_01.py::test_amnesty_does_not_hide_missing_loan\n10 failed in 0.17s\n",
+        "failing_tests": [
+          "tests/test_tf_time_window_01.py::test_amnesty_does_not_hide_missing_loan",
+          "tests/test_tf_time_window_01.py::test_amnesty_return_still_removes_loan",
+          "tests/test_tf_time_window_01.py::test_before_window_still_fined",
+          "tests/test_tf_time_window_01.py::test_clear_amnesty",
+          "tests/test_tf_time_window_01.py::test_end_is_exclusive",
+          "tests/test_tf_time_window_01.py::test_invalid_window_rejected_and_keeps_old_window",
+          "tests/test_tf_time_window_01.py::test_new_window_replaces_old",
+          "tests/test_tf_time_window_01.py::test_not_active_without_window",
+          "tests/test_tf_time_window_01.py::test_return_inside_window_has_no_fine",
+          "tests/test_tf_time_window_01.py::test_start_is_inclusive"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (10 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 10
+            },
+            "seconds": 1.38
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 10
+            },
+            "seconds": 1.71
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 10
+            },
+            "seconds": 0.94
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 9 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 19
+        },
+        "seconds": 0.8
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 11 of 11 broken versions (100%)",
+      "evidence": {
+        "mutants": 11,
+        "killed": 11,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 11,
+        "required": 0.6
+      }
+    }
+  ]
+}

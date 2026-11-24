@@ -1,0 +1,128 @@
+=== FILE solution library/lending.py ===
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+FINE_ROUND_UNIT_CENTS = 5
+
+
+def discounted_fine(fine_cents: int, percent: int) -> int:
+    """Return the amount payable in cents after a percentage discount.
+
+    The exact amount is ``fine_cents * (100 - percent) / 100``. It is rounded
+    to the nearest multiple of FINE_ROUND_UNIT_CENTS with ties going up. Any
+    fine that is not fully waived is charged at least one rounding unit.
+    """
+    if fine_cents < 0:
+        raise ValueError("fine_cents must not be negative")
+    if percent < 0 or percent > 100:
+        raise ValueError("percent must be between 0 and 100")
+    if fine_cents == 0 or percent == 100:
+        return 0
+    unit = FINE_ROUND_UNIT_CENTS
+    # exact = numerator / 100; in units of `unit` it is numerator / (100 * unit).
+    numerator = fine_cents * (100 - percent)
+    denominator = 100 * unit
+    # round half up using integer arithmetic only
+    units = (2 * numerator + denominator) // (2 * denominator)
+    result = units * unit
+    if result < unit:
+        result = unit
+    return result
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+        self._discounts: dict[str, int] = {}  # member_id -> fine discount percent
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def set_fine_discount(self, member_id: str, percent: int) -> None:
+        """Set the member's late-fine discount percent (0 means no discount)."""
+        self._member(member_id)
+        if percent < 0 or percent > 100:
+            raise ValueError("percent must be between 0 and 100")
+        self._discounts[member_id] = percent
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        discount = self._discounts.get(member_id, 0)
+        return discounted_fine(late_days * FINE_CENTS_PER_DAY, discount)
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+=== END ===
+=== FILE solution library/__init__.py ===
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import (
+    FINE_CENTS_PER_DAY,
+    FINE_ROUND_UNIT_CENTS,
+    LOAN_DAYS,
+    Library,
+    discounted_fine,
+)
+from .models import Book, Member
+
+__all__ = [
+    "Book",
+    "Member",
+    "Library",
+    "LOAN_DAYS",
+    "FINE_CENTS_PER_DAY",
+    "FINE_ROUND_UNIT_CENTS",
+    "discounted_fine",
+]
+=== END ===

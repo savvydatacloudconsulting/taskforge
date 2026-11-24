@@ -1,0 +1,99 @@
+=== FILE solution shop/cart.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .catalog import Catalog, Product
+
+
+@dataclass(frozen=True)
+class CartEvent:
+    """One recorded operation on a cart (including rejected ones)."""
+
+    action: str
+    sku: str | None
+    quantity: int
+    ok: bool
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog):
+        self.catalog = catalog
+        self._lines: dict[str, int] = {}
+        self._history: list[CartEvent] = []
+
+    def history(self) -> list[CartEvent]:
+        return list(self._history)
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        try:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self.catalog.get(sku)  # raises KeyError for unknown products
+        except Exception:
+            self._history.append(CartEvent("add", sku, quantity, False))
+            raise
+        self._lines[sku] = self._lines.get(sku, 0) + quantity
+        self._history.append(CartEvent("add", sku, quantity, True))
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        requested = 0 if quantity is None else quantity
+        try:
+            if sku not in self._lines:
+                raise KeyError(f"not in cart: {sku}")
+            held = self._lines[sku]
+            if quantity is None or quantity >= held:
+                removed = held
+            else:
+                if quantity <= 0:
+                    raise ValueError("quantity must be positive")
+                removed = quantity
+        except Exception:
+            self._history.append(CartEvent("remove", sku, requested, False))
+            raise
+        if removed == held:
+            del self._lines[sku]
+        else:
+            self._lines[sku] -= removed
+        self._history.append(CartEvent("remove", sku, removed, True))
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        if not self._lines:
+            return
+        units = sum(self._lines.values())
+        self._lines.clear()
+        self._history.append(CartEvent("clear", None, units, True))
+=== END ===
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart, CartEvent
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+
+__all__ = [
+    "Cart",
+    "CartEvent",
+    "Catalog",
+    "Product",
+    "Order",
+    "checkout",
+    "format_money",
+    "tax_cents",
+]
+=== END ===

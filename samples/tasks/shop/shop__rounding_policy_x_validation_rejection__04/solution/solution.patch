@@ -1,0 +1,76 @@
+diff --git a/shop/checkout.py b/shop/checkout.py
+index cf0070b..4d33d48 100644
+--- a/shop/checkout.py
++++ b/shop/checkout.py
+@@ -3,7 +3,7 @@ from __future__ import annotations
+ from dataclasses import dataclass
+ 
+ from .cart import Cart
+-from .pricing import tax_cents
++from .pricing import check_rounding, tax_cents
+ 
+ 
+ @dataclass
+@@ -15,13 +15,21 @@ class Order:
+     total_cents: int
+ 
+ 
+-def checkout(cart: Cart, order_id: str) -> Order:
++def checkout(
++    cart: Cart, order_id: str, rounding: str = "half_up", per_line: bool = False
++) -> Order:
+     """Turn a cart into an order. The cart is emptied afterwards."""
++    check_rounding(rounding)
++    if not isinstance(per_line, bool):
++        raise TypeError("per_line must be a bool")
+     if cart.is_empty():
+         raise ValueError("cart is empty")
+     lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+     subtotal = cart.subtotal_cents()
+-    tax = tax_cents(subtotal)
++    if per_line:
++        tax = sum(tax_cents(price * qty, rounding=rounding) for _, qty, price in lines)
++    else:
++        tax = tax_cents(subtotal, rounding=rounding)
+     order = Order(order_id, lines, subtotal, tax, subtotal + tax)
+     cart.clear()
+     return order
+diff --git a/shop/pricing.py b/shop/pricing.py
+index 42bb21c..08d7455 100644
+--- a/shop/pricing.py
++++ b/shop/pricing.py
+@@ -1,11 +1,31 @@
+ from __future__ import annotations
+ 
+ TAX_RATE_PERCENT = 10
++ROUNDING_MODES = ("half_up", "half_even", "floor", "ceil")
+ 
+ 
+-def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+-    """Tax on an amount, rounded half up to the nearest cent."""
+-    return (amount_cents * rate_percent + 50) // 100
++def check_rounding(rounding: str) -> None:
++    if rounding not in ROUNDING_MODES:
++        raise ValueError(f"unknown rounding mode: {rounding}")
++
++
++def tax_cents(
++    amount_cents: int, rate_percent: int = TAX_RATE_PERCENT, rounding: str = "half_up"
++) -> int:
++    """Tax on an amount, rounded to a whole cent using the chosen rounding mode."""
++    check_rounding(rounding)
++    if not 0 <= rate_percent <= 100:
++        raise ValueError("rate_percent must be between 0 and 100")
++    quotient, remainder = divmod(amount_cents * rate_percent, 100)
++    if rounding == "floor":
++        return quotient
++    if rounding == "ceil":
++        return quotient + (1 if remainder else 0)
++    if remainder * 2 != 100:
++        return quotient + (1 if remainder * 2 > 100 else 0)
++    if rounding == "half_up":
++        return quotient + 1
++    return quotient + quotient % 2
+ 
+ 
+ def format_money(cents: int) -> str:

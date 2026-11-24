@@ -1,0 +1,106 @@
+{
+  "task_id": "library__rule_stacking__05",
+  "accepted": true,
+  "seconds": 14.95,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (9 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 9
+      },
+      "seconds": 0.88
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (11 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 11
+        },
+        "seconds": 0.69,
+        "tail": "stacking_05.py::test_no_flags_keeps_base_rate - Att...\nFAILED tests/test_tf_rule_stacking_05.py::test_only_reduced_member - Attribut...\nFAILED tests/test_tf_rule_stacking_05.py::test_only_high_demand_is_capped - A...\nFAILED tests/test_tf_rule_stacking_05.py::test_both_apply_in_order_then_cap\nFAILED tests/test_tf_rule_stacking_05.py::test_on_time_return_is_free_with_flags\nFAILED tests/test_tf_rule_stacking_05.py::test_flags_are_independent - Attrib...\nFAILED tests/test_tf_rule_stacking_05.py::test_unsetting_flags_restores_rate\nFAILED tests/test_tf_rule_stacking_05.py::test_flags_read_at_return_time_and_persist\nFAILED tests/test_tf_rule_stacking_05.py::test_unknown_ids_raise_key_error - ...\nFAILED tests/test_tf_rule_stacking_05.py::test_return_without_loan_still_key_error\n11 failed in 0.09s\n",
+        "failing_tests": [
+          "tests/test_tf_rule_stacking_05.py::test_both_apply_in_order_then_cap",
+          "tests/test_tf_rule_stacking_05.py::test_constants_exported",
+          "tests/test_tf_rule_stacking_05.py::test_flags_are_independent",
+          "tests/test_tf_rule_stacking_05.py::test_flags_read_at_return_time_and_persist",
+          "tests/test_tf_rule_stacking_05.py::test_no_flags_keeps_base_rate",
+          "tests/test_tf_rule_stacking_05.py::test_on_time_return_is_free_with_flags",
+          "tests/test_tf_rule_stacking_05.py::test_only_high_demand_is_capped",
+          "tests/test_tf_rule_stacking_05.py::test_only_reduced_member",
+          "tests/test_tf_rule_stacking_05.py::test_return_without_loan_still_key_error",
+          "tests/test_tf_rule_stacking_05.py::test_unknown_ids_raise_key_error",
+          "tests/test_tf_rule_stacking_05.py::test_unsetting_flags_restores_rate"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (11 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 11
+            },
+            "seconds": 0.67
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 11
+            },
+            "seconds": 0.6
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 11
+            },
+            "seconds": 0.76
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 9 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 20
+        },
+        "seconds": 0.71
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 12 of 12 broken versions (100%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 12,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 13,
+        "required": 0.6
+      }
+    }
+  ]
+}

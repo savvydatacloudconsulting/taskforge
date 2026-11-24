@@ -1,0 +1,108 @@
+{
+  "task_id": "shop__dedup_merge__02",
+  "accepted": true,
+  "seconds": 18.17,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 0.72
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (13 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 13
+        },
+        "seconds": 0.77,
+        "tail": "t_with_existing_product\nFAILED tests/test_tf_dedup_merge_02.py::test_catalog_add_all_conflict_within_input_is_atomic\nFAILED tests/test_tf_dedup_merge_02.py::test_catalog_add_all_conflict_on_non_price_field\nFAILED tests/test_tf_dedup_merge_02.py::test_catalog_add_all_empty_input - At...\nFAILED tests/test_tf_dedup_merge_02.py::test_cart_add_all_merges_repeated_skus\nFAILED tests/test_tf_dedup_merge_02.py::test_cart_add_all_adds_to_existing_quantity\nFAILED tests/test_tf_dedup_merge_02.py::test_cart_add_all_empty_input - Attri...\nFAILED tests/test_tf_dedup_merge_02.py::test_cart_add_all_invalid_quantity_is_atomic\nFAILED tests/test_tf_dedup_merge_02.py::test_cart_add_all_negative_quantity_rejected\nFAILED tests/test_tf_dedup_merge_02.py::test_cart_add_all_unknown_sku_is_atomic\n13 failed in 0.09s\n",
+        "failing_tests": [
+          "tests/test_tf_dedup_merge_02.py::test_cart_add_all_adds_to_existing_quantity",
+          "tests/test_tf_dedup_merge_02.py::test_cart_add_all_empty_input",
+          "tests/test_tf_dedup_merge_02.py::test_cart_add_all_invalid_quantity_is_atomic",
+          "tests/test_tf_dedup_merge_02.py::test_cart_add_all_merges_repeated_skus",
+          "tests/test_tf_dedup_merge_02.py::test_cart_add_all_negative_quantity_rejected",
+          "tests/test_tf_dedup_merge_02.py::test_cart_add_all_unknown_sku_is_atomic",
+          "tests/test_tf_dedup_merge_02.py::test_catalog_add_all_conflict_on_non_price_field",
+          "tests/test_tf_dedup_merge_02.py::test_catalog_add_all_conflict_with_existing_product",
+          "tests/test_tf_dedup_merge_02.py::test_catalog_add_all_conflict_within_input_is_atomic",
+          "tests/test_tf_dedup_merge_02.py::test_catalog_add_all_counts_new_products",
+          "tests/test_tf_dedup_merge_02.py::test_catalog_add_all_empty_input",
+          "tests/test_tf_dedup_merge_02.py::test_catalog_add_all_ignores_identical_existing_product",
+          "tests/test_tf_dedup_merge_02.py::test_catalog_add_all_ignores_identical_repeat_in_input"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (13 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 13
+            },
+            "seconds": 0.87
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 13
+            },
+            "seconds": 0.67
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 13
+            },
+            "seconds": 0.64
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 28
+        },
+        "seconds": 0.74
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 12 of 12 broken versions (100%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 12,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 13,
+        "required": 0.6
+      }
+    }
+  ]
+}

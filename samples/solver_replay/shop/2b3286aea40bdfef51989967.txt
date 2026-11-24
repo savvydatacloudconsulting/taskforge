@@ -1,0 +1,95 @@
+=== FILE solution shop/promotions.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass(frozen=True)
+class Promotion:
+    """A percentage-off promotion valid inside a time window."""
+
+    name: str
+    percent_off: int
+    start: datetime
+    end: datetime
+    category: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.percent_off < 1 or self.percent_off > 100:
+            raise ValueError("percent_off must be between 1 and 100")
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+
+    def is_active(self, now: datetime) -> bool:
+        return self.start <= now < self.end
+=== END ===
+=== FILE solution shop/checkout.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+from .cart import Cart
+from .pricing import tax_cents
+from .promotions import Promotion
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    discount_cents: int = 0
+
+
+def checkout(
+    cart: Cart,
+    order_id: str,
+    promotion: Promotion | None = None,
+    now: datetime | None = None,
+) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    if promotion is not None and now is None:
+        raise ValueError("now is required when a promotion is given")
+    cart_lines = cart.lines()
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart_lines]
+    subtotal = cart.subtotal_cents()
+    discount = 0
+    if promotion is not None and promotion.is_active(now):
+        eligible = sum(
+            p.price_cents * qty
+            for p, qty in cart_lines
+            if promotion.category is None or p.category == promotion.category
+        )
+        discount = eligible * promotion.percent_off // 100
+    taxable = subtotal - discount
+    tax = tax_cents(taxable)
+    order = Order(order_id, lines, subtotal, tax, taxable + tax, discount)
+    cart.clear()
+    return order
+=== END ===
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+from .promotions import Promotion
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "checkout",
+    "format_money",
+    "tax_cents",
+    "Promotion",
+]
+=== END ===

@@ -1,0 +1,256 @@
+=== TITLE ===
+Cart audit trail of add, remove and clear events
+=== INSTRUCTION ===
+## Background
+
+A `Cart` currently keeps no record of what happened to it. Support staff want to see, in order, every change made to a cart (including attempted changes that were rejected) so they can explain why a cart looks the way it does.
+
+## Requirements
+
+1. Add a frozen dataclass `CartEvent` with fields `action` (str), `sku` (str or None), `quantity` (int) and `ok` (bool), defined in `shop/cart.py` and exported from the `shop` package (`from shop import CartEvent`).
+2. Add a method `Cart.history()` returning a list of `CartEvent` objects in the order the operations happened. A new cart has an empty history.
+3. `history()` returns a fresh list on every call: modifying the returned list must not change the cart's real history.
+4. A successful `add(sku, quantity)` records `CartEvent("add", sku, quantity, True)`.
+5. An `add` that raises (non-positive quantity, or unknown SKU) still raises exactly as before and also records `CartEvent("add", sku, quantity, False)`, using the arguments as passed.
+6. A successful `remove(sku, quantity)` records `CartEvent("remove", sku, removed, True)`, where `removed` is the number of units actually taken out of the cart. Removing the whole line (quantity omitted, or quantity greater than or equal to the amount held) records the amount that was held.
+7. A `remove` that raises (SKU not in the cart, or a non-positive quantity on a partial removal) still raises exactly as before and also records `CartEvent("remove", sku, requested, False)`, where `requested` is the quantity passed, or `0` if it was omitted (`None`).
+8. `clear()` on a non-empty cart records `CartEvent("clear", None, units, True)`, where `units` is the total number of units in the cart before it was cleared. `clear()` on an already-empty cart is a no-op and records nothing.
+9. `checkout` empties the cart through `clear()`, so a successful checkout appends a `clear` event for the cart. A checkout that fails because the cart is empty records nothing.
+10. Cart contents, subtotals and all existing behaviour are otherwise unchanged.
+
+## Public interface
+
+- `shop.cart.CartEvent` (also `shop.CartEvent`): `@dataclass(frozen=True)` with fields `action: str`, `sku: str | None`, `quantity: int`, `ok: bool`. Dataclass equality is used to compare events.
+- `Cart.history(self) -> list[CartEvent]`
+- Action strings are exactly `"add"`, `"remove"` and `"clear"`.
+- Existing exception types and messages of `add` and `remove` do not change.
+
+## Examples
+
+```python
+cart = Cart(catalog)
+cart.add("PEN", 2)
+cart.remove("PEN", 1)
+try:
+    cart.add("NOPE")
+except KeyError:
+    pass
+cart.history()
+# [CartEvent("add", "PEN", 2, True),
+#  CartEvent("remove", "PEN", 1, True),
+#  CartEvent("add", "NOPE", 1, False)]
+
+cart.clear()
+cart.history()[-1]   # CartEvent("clear", None, 1, True)
+cart.clear()         # already empty: nothing recorded
+```
+=== FILE solution shop/cart.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .catalog import Catalog, Product
+
+
+@dataclass(frozen=True)
+class CartEvent:
+    action: str
+    sku: str | None
+    quantity: int
+    ok: bool
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog):
+        self.catalog = catalog
+        self._lines: dict[str, int] = {}
+        self._events: list[CartEvent] = []
+
+    def history(self) -> list[CartEvent]:
+        return list(self._events)
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        try:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self.catalog.get(sku)  # raises KeyError for unknown products
+        except (ValueError, KeyError):
+            self._events.append(CartEvent("add", sku, quantity, False))
+            raise
+        self._lines[sku] = self._lines.get(sku, 0) + quantity
+        self._events.append(CartEvent("add", sku, quantity, True))
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        held = self._lines.get(sku, 0)
+        try:
+            self._remove(sku, quantity)
+        except (KeyError, ValueError):
+            self._events.append(CartEvent("remove", sku, quantity or 0, False))
+            raise
+        removed = held if quantity is None or quantity >= held else quantity
+        self._events.append(CartEvent("remove", sku, removed, True))
+
+    def _remove(self, sku: str, quantity: int | None) -> None:
+        if sku not in self._lines:
+            raise KeyError(f"not in cart: {sku}")
+        if quantity is None or quantity >= self._lines[sku]:
+            del self._lines[sku]
+        else:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self._lines[sku] -= quantity
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        if self._lines:
+            self._events.append(CartEvent("clear", None, sum(self._lines.values()), True))
+        self._lines.clear()
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart, CartEvent
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+
+__all__ = [
+    "Cart",
+    "CartEvent",
+    "Catalog",
+    "Product",
+    "Order",
+    "checkout",
+    "format_money",
+    "tax_cents",
+]
+=== FILE test tests/test_tf_audit_trail_06.py ===
+import pytest
+
+from shop import Cart, CartEvent, checkout
+
+
+def test_new_cart_has_empty_history(cart):
+    assert cart.history() == []
+
+
+def test_successful_add_and_remove_are_recorded_in_order(cart):
+    cart.add("PEN", 3)
+    cart.add("MUG")
+    cart.remove("PEN", 1)
+    assert cart.history() == [
+        CartEvent("add", "PEN", 3, True),
+        CartEvent("add", "MUG", 1, True),
+        CartEvent("remove", "PEN", 1, True),
+    ]
+
+
+def test_event_is_frozen(cart):
+    cart.add("PEN")
+    event = cart.history()[0]
+    assert event.action == "add"
+    assert event.sku == "PEN"
+    assert event.quantity == 1
+    assert event.ok is True
+    with pytest.raises(Exception):
+        event.quantity = 5
+
+
+def test_history_returns_a_copy(cart):
+    cart.add("PEN")
+    snapshot = cart.history()
+    snapshot.clear()
+    assert cart.history() == [CartEvent("add", "PEN", 1, True)]
+
+
+def test_failed_adds_are_recorded_and_still_raise(cart):
+    with pytest.raises(ValueError):
+        cart.add("PEN", 0)
+    with pytest.raises(KeyError):
+        cart.add("NOPE", 2)
+    assert cart.quantity("PEN") == 0
+    assert cart.history() == [
+        CartEvent("add", "PEN", 0, False),
+        CartEvent("add", "NOPE", 2, False),
+    ]
+
+
+def test_remove_records_units_actually_removed(cart):
+    cart.add("PEN", 3)
+    cart.add("MUG", 2)
+    cart.add("BOOK", 1)
+    cart.remove("PEN")          # whole line, omitted quantity
+    cart.remove("MUG", 10)      # more than held
+    cart.remove("BOOK", 1)      # exactly what is held
+    assert cart.history()[3:] == [
+        CartEvent("remove", "PEN", 3, True),
+        CartEvent("remove", "MUG", 2, True),
+        CartEvent("remove", "BOOK", 1, True),
+    ]
+    assert cart.is_empty()
+
+
+def test_failed_removes_are_recorded_and_still_raise(cart):
+    with pytest.raises(KeyError):
+        cart.remove("PEN")
+    with pytest.raises(KeyError):
+        cart.remove("MUG", 2)
+    cart.add("BOOK", 4)
+    with pytest.raises(ValueError):
+        cart.remove("BOOK", 0)
+    with pytest.raises(ValueError):
+        cart.remove("BOOK", -2)
+    assert cart.quantity("BOOK") == 4
+    assert cart.history() == [
+        CartEvent("remove", "PEN", 0, False),
+        CartEvent("remove", "MUG", 2, False),
+        CartEvent("add", "BOOK", 4, True),
+        CartEvent("remove", "BOOK", 0, False),
+        CartEvent("remove", "BOOK", -2, False),
+    ]
+
+
+def test_clear_records_total_units_and_empty_clear_is_a_noop(cart):
+    cart.clear()
+    assert cart.history() == []
+    cart.add("PEN", 2)
+    cart.add("MUG", 3)
+    cart.clear()
+    cart.clear()
+    assert cart.history()[2:] == [CartEvent("clear", None, 5, True)]
+    assert len(cart.history()) == 3
+
+
+def test_checkout_appends_a_clear_event(cart):
+    cart.add("PEN", 2)
+    cart.add("MUG")
+    checkout(cart, "o-1")
+    assert cart.history()[-1] == CartEvent("clear", None, 3, True)
+    assert len(cart.history()) == 3
+
+
+def test_failed_checkout_records_nothing(cart):
+    with pytest.raises(ValueError):
+        checkout(cart, "o-2")
+    assert cart.history() == []
+
+
+def test_histories_are_per_cart(catalog):
+    a = Cart(catalog)
+    b = Cart(catalog)
+    a.add("PEN")
+    assert b.history() == []
+    assert a.history() == [CartEvent("add", "PEN", 1, True)]
+=== END ===

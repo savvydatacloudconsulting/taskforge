@@ -1,0 +1,98 @@
+{
+  "task_id": "shop__rounding_policy_x_validation_rejection__04",
+  "accepted": true,
+  "seconds": 15.81,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 0.72
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 0.87,
+        "tail": "odule '<repo>\\tests\\test_tf_rounding_policy_x_validation_rejection_04.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_rounding_policy_x_validation_rejection_04.py:4: in <module>\n    from shop.pricing import ROUNDING_MODES\nE   ImportError: cannot import name 'ROUNDING_MODES' from 'shop.pricing' (<repo>\\shop\\pricing.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_rounding_policy_x_validation_rejection_04.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.15s\n",
+        "failing_tests": [
+          "tests/test_tf_rounding_policy_x_validation_rejection_04.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (37 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 37
+            },
+            "seconds": 0.76
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 37
+            },
+            "seconds": 0.99
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 37
+            },
+            "seconds": 1.09
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 52
+        },
+        "seconds": 1.33
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 11 of 12 broken versions (92%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 11,
+        "survived": [
+          "shop/pricing.py: line 25: constant 1 -> 2"
+        ],
+        "kill_rate": 0.917,
+        "available_sites": 46,
+        "required": 0.6
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "n": 8,
+  "seed": 1,
+  "attempts": 3,
+  "recipes": null,
+  "note": "Recorded AI answers for examples/shop. Each <key>.txt is the reply to one prompt; the factory re-verifies every reply on replay."
+}

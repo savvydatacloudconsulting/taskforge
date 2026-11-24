@@ -1,0 +1,118 @@
+=== FILE solution shop/catalog.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Product:
+    sku: str
+    name: str
+    price_cents: int
+    category: str = "general"
+
+
+class Catalog:
+    """A set of products, looked up by SKU."""
+
+    def __init__(self, products=()):
+        self._products: dict[str, Product] = {}
+        for product in products:
+            self.add(product)
+
+    def add(self, product: Product) -> None:
+        if product.sku in self._products:
+            raise ValueError(f"duplicate sku: {product.sku}")
+        self._products[product.sku] = product
+
+    def add_all(self, products) -> int:
+        """Add many products atomically; return the number newly added.
+
+        Identical repeats (of existing products or earlier input) are ignored.
+        A repeated SKU with different data raises ValueError and leaves the
+        catalog unchanged.
+        """
+        staged: dict[str, Product] = {}
+        for product in products:
+            existing = self._products.get(product.sku)
+            if existing is None:
+                existing = staged.get(product.sku)
+            if existing is None:
+                staged[product.sku] = product
+            elif existing != product:
+                raise ValueError(f"conflicting sku: {product.sku}")
+        self._products.update(staged)
+        return len(staged)
+
+    def get(self, sku: str) -> Product:
+        try:
+            return self._products[sku]
+        except KeyError:
+            raise KeyError(f"unknown sku: {sku}") from None
+
+    def __contains__(self, sku: str) -> bool:
+        return sku in self._products
+
+    def by_category(self, category: str) -> list[Product]:
+        return [p for p in self._products.values() if p.category == category]
+=== END ===
+=== FILE solution shop/cart.py ===
+from __future__ import annotations
+
+from .catalog import Catalog, Product
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog):
+        self.catalog = catalog
+        self._lines: dict[str, int] = {}
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        self.catalog.get(sku)  # raises KeyError for unknown products
+        self._lines[sku] = self._lines.get(sku, 0) + quantity
+
+    def add_all(self, items) -> int:
+        """Add many (sku, quantity) items atomically.
+
+        Repeated SKUs are merged by summing quantities. Returns the number of
+        distinct SKUs in the input. If any entry is invalid, nothing changes.
+        """
+        merged: dict[str, int] = {}
+        for sku, quantity in items:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self.catalog.get(sku)  # raises KeyError for unknown products
+            merged[sku] = merged.get(sku, 0) + quantity
+        for sku, quantity in merged.items():
+            self._lines[sku] = self._lines.get(sku, 0) + quantity
+        return len(merged)
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        if sku not in self._lines:
+            raise KeyError(f"not in cart: {sku}")
+        if quantity is None or quantity >= self._lines[sku]:
+            del self._lines[sku]
+        else:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self._lines[sku] -= quantity
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        self._lines.clear()
+=== END ===

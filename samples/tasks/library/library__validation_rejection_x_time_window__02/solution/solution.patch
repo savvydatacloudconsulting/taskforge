@@ -1,0 +1,81 @@
+diff --git a/library/lending.py b/library/lending.py
+index db126a4..e928691 100644
+--- a/library/lending.py
++++ b/library/lending.py
+@@ -1,6 +1,6 @@
+ from __future__ import annotations
+ 
+-from datetime import date, timedelta
++from datetime import date, datetime, timedelta
+ 
+ from .models import Book, Member
+ 
+@@ -8,6 +8,10 @@ LOAN_DAYS = 14
+ FINE_CENTS_PER_DAY = 50
+ 
+ 
++def _is_plain_date(value: object) -> bool:
++    return isinstance(value, date) and not isinstance(value, datetime)
++
++
+ class Library:
+     """Books, members and who has borrowed what. Dates are always passed in."""
+ 
+@@ -22,6 +26,16 @@ class Library:
+         self._books[book.isbn] = book
+ 
+     def add_member(self, member: Member) -> None:
++        if member.valid_from is not None and not _is_plain_date(member.valid_from):
++            raise TypeError("valid_from must be a date")
++        if member.valid_until is not None and not _is_plain_date(member.valid_until):
++            raise TypeError("valid_until must be a date")
++        if (
++            member.valid_from is not None
++            and member.valid_until is not None
++            and member.valid_from > member.valid_until
++        ):
++            raise ValueError("valid_from is after valid_until")
+         if member.member_id in self._members:
+             raise ValueError(f"duplicate member: {member.member_id}")
+         self._members[member.member_id] = member
+@@ -33,13 +47,21 @@ class Library:
+ 
+     def lend(self, isbn: str, member_id: str, today: date) -> date:
+         """Lend a book and return its due date."""
++        if not _is_plain_date(today):
++            raise TypeError("today must be a date")
+         self._book(isbn)
+-        self._member(member_id)
++        member = self._member(member_id)
++        if (member.valid_from is not None and today < member.valid_from) or (
++            member.valid_until is not None and today > member.valid_until
++        ):
++            raise ValueError(f"membership not active on {today.isoformat()}")
+         if (isbn, member_id) in self._loans:
+             raise ValueError("already borrowed")
+         if self.copies_available(isbn) <= 0:
+             raise ValueError("no copies available")
+         due = today + timedelta(days=LOAN_DAYS)
++        if member.valid_until is not None:
++            due = min(due, member.valid_until)
+         self._loans[(isbn, member_id)] = due
+         return due
+ 
+diff --git a/library/models.py b/library/models.py
+index e9c1679..21854c0 100644
+--- a/library/models.py
++++ b/library/models.py
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
++from datetime import date
+ 
+ 
+ @dataclass(frozen=True)
+@@ -14,3 +15,5 @@ class Book:
+ class Member:
+     member_id: str
+     name: str
++    valid_from: date | None = None
++    valid_until: date | None = None

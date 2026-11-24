@@ -1,0 +1,265 @@
+[SYSTEM]
+You are a careful software engineer. You implement feature requests in existing code. You follow the requested output format exactly, with no commentary outside it.
+
+[USER]
+# Task
+Implement the feature request below in the repository shown. Hidden tests will check your work against the
+Requirements and the Public interface. You cannot see them. The existing tests must keep passing.
+
+# Repository
+name: shop
+language: python
+test command: {python} -m pytest -q
+
+## File tree
+shop/__init__.py
+shop/cart.py
+shop/catalog.py
+shop/checkout.py
+shop/pricing.py
+tests/conftest.py
+tests/test_cart.py
+tests/test_catalog.py
+tests/test_pricing_checkout.py
+
+## FILE shop/__init__.py (full content)
+```
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+
+__all__ = ["Cart", "Catalog", "Product", "Order", "checkout", "format_money", "tax_cents"]
+```
+
+## FILE shop/cart.py (full content)
+```
+from __future__ import annotations
+
+from .catalog import Catalog, Product
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog):
+        self.catalog = catalog
+        self._lines: dict[str, int] = {}
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        self.catalog.get(sku)  # raises KeyError for unknown products
+        self._lines[sku] = self._lines.get(sku, 0) + quantity
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        if sku not in self._lines:
+            raise KeyError(f"not in cart: {sku}")
+        if quantity is None or quantity >= self._lines[sku]:
+            del self._lines[sku]
+        else:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self._lines[sku] -= quantity
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        self._lines.clear()
+```
+
+## FILE shop/catalog.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Product:
+    sku: str
+    name: str
+    price_cents: int
+    category: str = "general"
+
+
+class Catalog:
+    """A set of products, looked up by SKU."""
+
+    def __init__(self, products=()):
+        self._products: dict[str, Product] = {}
+        for product in products:
+            self.add(product)
+
+    def add(self, product: Product) -> None:
+        if product.sku in self._products:
+            raise ValueError(f"duplicate sku: {product.sku}")
+        self._products[product.sku] = product
+
+    def get(self, sku: str) -> Product:
+        try:
+            return self._products[sku]
+        except KeyError:
+            raise KeyError(f"unknown sku: {sku}") from None
+
+    def __contains__(self, sku: str) -> bool:
+        return sku in self._products
+
+    def by_category(self, category: str) -> list[Product]:
+        return [p for p in self._products.values() if p.category == category]
+```
+
+## FILE shop/checkout.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import tax_cents
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+
+
+def checkout(cart: Cart, order_id: str) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    tax = tax_cents(subtotal)
+    order = Order(order_id, lines, subtotal, tax, subtotal + tax)
+    cart.clear()
+    return order
+```
+
+## FILE shop/pricing.py (full content)
+```
+from __future__ import annotations
+
+TAX_RATE_PERCENT = 10
+
+
+def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on an amount, rounded half up to the nearest cent."""
+    return (amount_cents * rate_percent + 50) // 100
+
+
+def format_money(cents: int) -> str:
+    sign = "-" if cents < 0 else ""
+    cents = abs(cents)
+    return f"{sign}${cents // 100}.{cents % 100:02d}"
+```
+
+## Existing tests (4 files): tests/conftest.py, tests/test_cart.py, tests/test_catalog.py, tests/test_pricing_checkout.py
+## Example test file tests/conftest.py (style reference)
+```
+import pytest
+
+from shop import Cart, Catalog, Product
+
+
+@pytest.fixture
+def catalog():
+    return Catalog([
+        Product("PEN", "Pen", 150, "office"),
+        Product("BOOK", "Notebook", 1200, "office"),
+        Product("MUG", "Mug", 800, "kitchen"),
+    ])
+
+
+@pytest.fixture
+def cart(catalog):
+    return Cart(catalog)
+```
+
+# Feature request
+## Background
+
+The shop library can total a cart but has no way to apply promotions. Two independent promotions must now be able
+to apply to the same cart: a per-category percentage discount and a flat-amount coupon. They have to be combined
+with a fixed order of application and an overall cap on how much of the subtotal can be discounted.
+
+## Requirements
+
+1. Add a new module `shop/promotions.py` with the function `stacked_discount_cents` (see "Public interface"). All
+   amounts are integer cents.
+2. Category discount (applied first): `category_percents` maps a product category name to a whole percentage. For
+   every cart line whose product category is a key of the mapping, the line discount is
+   `unit price * quantity * percent // 100` (integer floor division, per line). The category discount is the sum of
+   the line discounts. Categories not present in the mapping are unaffected, and keys that match no product in the
+   cart are ignored.
+3. Coupon (applied second): `coupon_cents` is a flat amount taken off what is left after the category discount. The
+   coupon that is actually applied is `min(coupon_cents, subtotal - category_discount)`, so the coupon can never
+   push the total discount past the subtotal.
+4. Cap: the combined discount (category discount plus applied coupon) can never exceed
+   `subtotal * cap_percent // 100` (integer floor division). When the cap is exceeded the result is exactly that cap
+   value.
+5. The function returns the final combined discount in cents. With an empty cart it returns 0. When only one of the
+   two promotions is supplied (no `category_percents`, or `coupon_cents` of 0) only that promotion contributes.
+6. Validation, raising `ValueError` with exactly these messages, checked before any calculation (and also for an
+   empty cart):
+   - any percentage in `category_percents` that is below 0 or above 100: `"percent must be between 0 and 100"`
+   - `coupon_cents` below 0: `"coupon must not be negative"`
+   - `cap_percent` below 0 or above 100: `"cap_percent must be between 0 and 100"`
+7. Also add `discounted_subtotal_cents`, which takes the same arguments and returns the cart subtotal minus the
+   value of `stacked_discount_cents`.
+8. Both functions must be importable from the package root: `from shop import stacked_discount_cents,
+   discounted_subtotal_cents`. The cart itself must not be modified.
+
+## Public interface
+
+In `shop/promotions.py` (and re-exported from `shop`):
+
+```
+stacked_discount_cents(cart: Cart, category_percents: dict[str, int] | None = None,
+                       coupon_cents: int = 0, cap_percent: int = 50) -> int
+discounted_subtotal_cents(cart: Cart, category_percents: dict[str, int] | None = None,
+                          coupon_cents: int = 0, cap_percent: int = 50) -> int
+```
+
+Errors: `ValueError("percent must be between 0 and 100")`, `ValueError("coupon must not be negative")`,
+`ValueError("cap_percent must be between 0 and 100")`.
+
+## Examples
+
+With catalog PEN (150, "office"), BOOK (1200, "office"), MUG (800, "kitchen") and a cart of 2 BOOK and 1 MUG
+(subtotal 3200):
+
+- `stacked_discount_cents(cart, {"office": 10}, 500)` returns `740` (240 category + 500 coupon, under the cap of 1600).
+- `stacked_discount_cents(cart, {"office": 50}, 1000)` returns `1600`: 1200 + 1000 = 2200 is above the cap of
+  50 percent of 3200.
+- `stacked_discount_cents(cart, {"office": 50}, 1000, cap_percent=80)` returns `2200`.
+- `discounted_subtotal_cents(cart, {"office": 10}, 500)` returns `2460`.
+
+# Rules
+1. Output the COMPLETE new content of every non-test file you modify or create. Do not output unchanged files.
+2. Do not edit or delete existing tests and do not add tests.
+3. Use only the standard library and dependencies the repository already uses.
+4. Follow every requirement exactly: names, signatures, error types, exact messages and boundary behaviour.
+
+# Output format (exact)
+=== FILE solution <relative/path> ===
+<complete new file content>
+=== END ===
+(Repeat the FILE section for every file you modify or create. No code fences around file content.
+No text outside the sections.)

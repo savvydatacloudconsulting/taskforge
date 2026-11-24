@@ -1,0 +1,21 @@
+{
+  "repo": "shop",
+  "language": "python",
+  "base_commit": "edb821f4489b12ec52b8f1e33bd2bc7319b7cf9f",
+  "seed": 1,
+  "generator": "taskforge 0.1.0",
+  "seconds": 166.4,
+  "requested": 8,
+  "accepted": 8,
+  "rejected": 0,
+  "pending": 0,
+  "mean_attempts": 1.0,
+  "variation_score": 0.808,
+  "ai": {
+    "backend": "replay",
+    "calls": 0,
+    "chars_in": 0,
+    "chars_out": 0,
+    "cache_hits": 8
+  }
+}

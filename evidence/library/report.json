@@ -1,0 +1,308 @@
+{
+  "generator": "taskforge 0.1.0",
+  "run": {
+    "repo": "library",
+    "language": "python",
+    "base_commit": "55a3fafe5b933f800a5dbf32f0a37b50b3a375b5",
+    "seed": 2,
+    "generator": "taskforge 0.1.0",
+    "seconds": 117.5,
+    "requested": 6,
+    "accepted": 6,
+    "rejected": 0,
+    "pending": 0,
+    "mean_attempts": 1.17,
+    "variation_score": 0.786,
+    "ai": {
+      "backend": "replay",
+      "calls": 0,
+      "chars_in": 0,
+      "chars_out": 0,
+      "cache_hits": 7
+    }
+  },
+  "records": [
+    {
+      "id": "library__audit_trail_x_quantity_limit__06",
+      "status": "accepted",
+      "title": "Per-member loan cap with an audit trail of lending events",
+      "recipes": [
+        "audit_trail",
+        "quantity_limit"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+        "nothing_breaks": "the full suite passes; all 9 original tests still pass",
+        "tests_have_teeth": "tests caught 12 of 12 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 12,
+      "nearest_task": "library__rounding_policy__04",
+      "nearest_distance": 0.7626,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 19.24749679999877
+        }
+      ]
+    },
+    {
+      "id": "library__rounding_policy__04",
+      "status": "accepted",
+      "title": "Member fine discounts with a half-up 5-cent rounding policy",
+      "recipes": [
+        "rounding_policy"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (18 tests)",
+        "nothing_breaks": "the full suite passes; all 9 original tests still pass",
+        "tests_have_teeth": "tests caught 12 of 12 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 12,
+      "nearest_task": "library__tiered_rates__03",
+      "nearest_distance": 0.721,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 16.661552699999447
+        }
+      ]
+    },
+    {
+      "id": "library__rule_stacking__05",
+      "status": "accepted",
+      "title": "Stack high-demand surcharge and reduced-rate discount on late fines with a daily cap",
+      "recipes": [
+        "rule_stacking"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (11 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (11 tests)",
+        "nothing_breaks": "the full suite passes; all 9 original tests still pass",
+        "tests_have_teeth": "tests caught 12 of 12 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 12,
+      "nearest_task": "library__rounding_policy__04",
+      "nearest_distance": 0.6704,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 16.314076299999215
+        }
+      ]
+    },
+    {
+      "id": "library__tiered_rates__03",
+      "status": "accepted",
+      "title": "Escalating tiered late fines for overdue returns",
+      "recipes": [
+        "tiered_rates"
+      ],
+      "attempts": 2,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+        "nothing_breaks": "the full suite passes; all 9 original tests still pass",
+        "tests_have_teeth": "tests caught 11 of 12 broken versions (92%)"
+      },
+      "kill_rate": 0.917,
+      "mutants": 12,
+      "nearest_task": "library__validation_rejection_x_time_window__02",
+      "nearest_distance": 0.8175,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "proof_failed",
+          "detail": "failed: passes_after",
+          "seconds": 4.2298332000009395
+        },
+        {
+          "number": 2,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 19.170853000001443
+        }
+      ]
+    },
+    {
+      "id": "library__time_window__01",
+      "status": "accepted",
+      "title": "Fine amnesty window that waives late fines for books returned within a date range",
+      "recipes": [
+        "time_window"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (10 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (10 tests)",
+        "nothing_breaks": "the full suite passes; all 9 original tests still pass",
+        "tests_have_teeth": "tests caught 11 of 11 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 11,
+      "nearest_task": null,
+      "nearest_distance": 1.0,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 18.835782899999685
+        }
+      ]
+    },
+    {
+      "id": "library__validation_rejection_x_time_window__02",
+      "status": "accepted",
+      "title": "Validated membership windows that gate lending and cap due dates",
+      "recipes": [
+        "validation_rejection",
+        "time_window"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (15 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (15 tests)",
+        "nothing_breaks": "the full suite passes; all 9 original tests still pass",
+        "tests_have_teeth": "tests caught 12 of 12 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 12,
+      "nearest_task": "library__time_window__01",
+      "nearest_distance": 0.7295,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 21.43121119999887
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "accepted": 6,
+    "rejected": 0,
+    "acceptance_rate": 1.0,
+    "mean_attempts": 1.17,
+    "mean_kill_rate": 0.986,
+    "variation_score": 0.786
+  },
+  "variation": {
+    "ids": [
+      "library__audit_trail_x_quantity_limit__06",
+      "library__rounding_policy__04",
+      "library__rule_stacking__05",
+      "library__tiered_rates__03",
+      "library__time_window__01",
+      "library__validation_rejection_x_time_window__02"
+    ],
+    "matrix": [
+      [
+        0.0,
+        0.7626,
+        0.7839,
+        0.7861,
+        0.8191,
+        0.8339
+      ],
+      [
+        0.7626,
+        0.0,
+        0.6704,
+        0.721,
+        0.7853,
+        0.8474
+      ],
+      [
+        0.7839,
+        0.6704,
+        0.0,
+        0.7371,
+        0.8019,
+        0.8554
+      ],
+      [
+        0.7861,
+        0.721,
+        0.7371,
+        0.0,
+        0.8327,
+        0.8175
+      ],
+      [
+        0.8191,
+        0.7853,
+        0.8019,
+        0.8327,
+        0.0,
+        0.7295
+      ],
+      [
+        0.8339,
+        0.8474,
+        0.8554,
+        0.8175,
+        0.7295,
+        0.0
+      ]
+    ],
+    "min_distance": 0.25
+  }
+}

@@ -1,0 +1,162 @@
+=== TITLE ===
+Validate order identifiers in checkout
+=== INSTRUCTION ===
+## Background
+`shop.checkout.checkout(cart, order_id)` currently accepts anything as the `order_id`: empty strings, whitespace-only strings, non-string values, or arbitrarily long identifiers. Bad identifiers end up inside `Order` objects and cause trouble downstream. Add input validation to `checkout` so that malformed order identifiers are rejected with precise errors before anything is changed.
+
+## Requirements
+1. If `order_id` is not an instance of `str`, `checkout` raises `TypeError` with the message `order_id must be a string`. (`None`, integers and `bytes` are all rejected.)
+2. If `order_id` is a string that is empty or consists only of whitespace, `checkout` raises `ValueError` with the message `order_id must not be empty`.
+3. If `order_id` contains any whitespace character (space, tab, newline, ...) anywhere and is not empty/whitespace-only per requirement 2, `checkout` raises `ValueError` with the message `order_id must not contain whitespace`. This includes leading and trailing whitespace such as `" A1"` or `"A1 "`.
+4. If `order_id` is longer than 32 characters, `checkout` raises `ValueError` with the message `order_id must be at most 32 characters`. Exactly 32 characters is allowed.
+5. Checks are applied in this order: type (1), empty (2), whitespace (3), length (4). Only the first failing check is reported.
+6. The `order_id` validation happens before the empty-cart check. If both the order id is malformed and the cart is empty, the order id error is raised.
+7. When validation fails, the cart must be left completely unchanged (its lines and quantities are untouched, it is not cleared).
+8. Valid identifiers (non-empty strings without whitespace, at most 32 characters) behave exactly as before: the returned `Order` has the same fields and values, `order_id` is stored unchanged, the cart is emptied afterwards, and an empty cart with a valid id still raises `ValueError("cart is empty")`.
+
+## Public interface
+- `shop.checkout.checkout(cart: Cart, order_id: str) -> Order` (signature unchanged).
+- Errors and exact messages:
+  - `TypeError("order_id must be a string")`
+  - `ValueError("order_id must not be empty")`
+  - `ValueError("order_id must not contain whitespace")`
+  - `ValueError("order_id must be at most 32 characters")`
+  - `ValueError("cart is empty")` (existing behaviour, unchanged)
+
+## Examples
+```python
+checkout(cart, "ORD-1")        # works as before
+checkout(cart, "")             # ValueError: order_id must not be empty
+checkout(cart, "   ")          # ValueError: order_id must not be empty
+checkout(cart, "A 1")          # ValueError: order_id must not contain whitespace
+checkout(cart, "X" * 33)       # ValueError: order_id must be at most 32 characters
+checkout(cart, 42)             # TypeError: order_id must be a string
+checkout(empty_cart, "bad id") # ValueError: order_id must not contain whitespace
+```
+=== FILE solution shop/checkout.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import tax_cents
+
+MAX_ORDER_ID_LENGTH = 32
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+
+
+def _validate_order_id(order_id) -> None:
+    if not isinstance(order_id, str):
+        raise TypeError("order_id must be a string")
+    if not order_id.strip():
+        raise ValueError("order_id must not be empty")
+    if any(ch.isspace() for ch in order_id):
+        raise ValueError("order_id must not contain whitespace")
+    if len(order_id) > MAX_ORDER_ID_LENGTH:
+        raise ValueError(f"order_id must be at most {MAX_ORDER_ID_LENGTH} characters")
+
+
+def checkout(cart: Cart, order_id: str) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    _validate_order_id(order_id)
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    tax = tax_cents(subtotal)
+    order = Order(order_id, lines, subtotal, tax, subtotal + tax)
+    cart.clear()
+    return order
+=== FILE test tests/test_tf_validation_rejection_08.py ===
+import pytest
+
+from shop import checkout
+
+
+def _message(excinfo):
+    return str(excinfo.value)
+
+
+def test_non_string_order_id_rejected(cart):
+    cart.add("PEN", 2)
+    for bad in (None, 42, b"A1", ["A1"]):
+        with pytest.raises(TypeError) as excinfo:
+            checkout(cart, bad)
+        assert _message(excinfo) == "order_id must be a string"
+    assert cart.quantity("PEN") == 2
+
+
+def test_empty_and_blank_order_id_rejected(cart):
+    cart.add("PEN")
+    for bad in ("", "   ", "\t\n"):
+        with pytest.raises(ValueError) as excinfo:
+            checkout(cart, bad)
+        assert _message(excinfo) == "order_id must not be empty"
+    assert not cart.is_empty()
+
+
+def test_whitespace_inside_order_id_rejected(cart):
+    cart.add("MUG")
+    for bad in ("A 1", " A1", "A1 ", "A\t1", "A1\n"):
+        with pytest.raises(ValueError) as excinfo:
+            checkout(cart, bad)
+        assert _message(excinfo) == "order_id must not contain whitespace"
+    assert cart.quantity("MUG") == 1
+
+
+def test_length_boundary(cart, catalog):
+    cart.add("BOOK", 3)
+    with pytest.raises(ValueError) as excinfo:
+        checkout(cart, "X" * 33)
+    assert _message(excinfo) == "order_id must be at most 32 characters"
+    assert cart.quantity("BOOK") == 3
+
+    order = checkout(cart, "X" * 32)
+    assert order.order_id == "X" * 32
+    assert order.lines == [("BOOK", 3, 1200)]
+    assert cart.is_empty()
+
+
+def test_check_order_type_before_empty_before_whitespace_before_length(cart):
+    cart.add("PEN")
+    with pytest.raises(TypeError):
+        checkout(cart, 5)
+    with pytest.raises(ValueError) as excinfo:
+        checkout(cart, " ")
+    assert _message(excinfo) == "order_id must not be empty"
+    with pytest.raises(ValueError) as excinfo:
+        checkout(cart, "a " + "b" * 40)
+    assert _message(excinfo) == "order_id must not contain whitespace"
+
+
+def test_order_id_error_wins_over_empty_cart(cart):
+    with pytest.raises(ValueError) as excinfo:
+        checkout(cart, "bad id")
+    assert _message(excinfo) == "order_id must not contain whitespace"
+    with pytest.raises(TypeError):
+        checkout(cart, None)
+    with pytest.raises(ValueError) as excinfo:
+        checkout(cart, "ORD-1")
+    assert _message(excinfo) == "cart is empty"
+
+
+def test_valid_order_id_behaves_as_before(cart):
+    cart.add("PEN", 2)
+    cart.add("MUG")
+    with pytest.raises(ValueError):
+        checkout(cart, "")
+    order = checkout(cart, "ORD-1")
+    assert order.order_id == "ORD-1"
+    assert order.subtotal_cents == 1100
+    assert order.tax_cents == 110
+    assert order.total_cents == 1210
+    assert cart.is_empty()
+=== END ===

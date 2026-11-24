@@ -1,0 +1,224 @@
+=== TITLE ===
+Time-windowed promotion applied at checkout
+=== INSTRUCTION ===
+## Background
+The `shop` library can turn a cart into an `Order` with `checkout(cart, order_id)`, but it has no notion of promotions. Marketing wants a percentage-off promotion that is only valid inside a time window (for example a weekend sale). To keep behaviour deterministic, the current time must never be read from the system clock: the caller passes it in.
+
+## Requirements
+1. Add a new module `shop/promotions.py` with a frozen dataclass `Promotion` that has the fields `name: str`, `percent_off: int`, `start: datetime`, `end: datetime` and `category: str | None = None` (in that order).
+2. `Promotion.is_active(now)` returns `True` when `start <= now < end` (start inclusive, end exclusive) and `False` otherwise.
+3. Creating a `Promotion` with `percent_off` below 1 or above 100 raises `ValueError("percent_off must be between 1 and 100")`.
+4. Creating a `Promotion` with `end` less than or equal to `start` raises `ValueError("end must be after start")`.
+5. `checkout` accepts two new optional parameters, `promotion=None` and `now=None`, after `order_id`. With no promotion, behaviour is exactly as before and `Order.discount_cents` is `0`.
+6. `Order` gets a new last field `discount_cents: int = 0`. `Order.subtotal_cents` remains the full pre-discount subtotal.
+7. When a promotion is given and is active at `now`, the discount is computed from the eligible lines only: the lines whose product category equals `promotion.category`, or all lines when `promotion.category` is `None`. `discount_cents = eligible_subtotal_cents * percent_off // 100` (rounded down).
+8. Tax is computed with the existing `tax_cents` on `subtotal_cents - discount_cents`, and `total_cents = subtotal_cents - discount_cents + tax_cents`.
+9. When a promotion is given but is not active at `now`, or no line is eligible, the discount is `0` and the order is identical to one created without a promotion.
+10. When a promotion is given and `now` is `None`, `checkout` raises `ValueError("now is required when a promotion is given")`, and the cart is left untouched (not emptied). The existing empty-cart check still applies first.
+11. `Promotion` is also exported from the `shop` package (`from shop import Promotion` works).
+
+## Public interface
+- `shop.promotions.Promotion(name, percent_off, start, end, category=None)`: frozen dataclass; `start` and `end` are `datetime.datetime` values.
+- `Promotion.is_active(now: datetime) -> bool`
+- `shop.checkout.checkout(cart, order_id, promotion=None, now=None) -> Order`
+- `shop.checkout.Order.discount_cents: int` (default `0`, last field)
+- Errors: `ValueError` with the exact messages given above.
+
+## Examples
+```python
+from datetime import datetime
+from shop import Promotion, checkout
+
+promo = Promotion("Sale", 10, datetime(2025, 1, 1), datetime(2025, 1, 2), category="office")
+# cart: 1 BOOK (1200, office) + 1 MUG (800, kitchen)
+order = checkout(cart, "A1", promo, datetime(2025, 1, 1, 12, 0))
+# subtotal 2000, discount 120, tax 188, total 2068
+order = checkout(cart, "A2", promo, datetime(2025, 1, 2))   # end is exclusive -> discount 0
+```
+=== FILE solution shop/promotions.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+
+@dataclass(frozen=True)
+class Promotion:
+    """A percentage-off promotion that is only valid inside [start, end)."""
+
+    name: str
+    percent_off: int
+    start: datetime
+    end: datetime
+    category: str | None = None
+
+    def __post_init__(self) -> None:
+        if not 1 <= self.percent_off <= 100:
+            raise ValueError("percent_off must be between 1 and 100")
+        if self.end <= self.start:
+            raise ValueError("end must be after start")
+
+    def is_active(self, now: datetime) -> bool:
+        return self.start <= now < self.end
+=== FILE solution shop/checkout.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import tax_cents
+from .promotions import Promotion
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    discount_cents: int = 0
+
+
+def checkout(cart: Cart, order_id: str, promotion: Promotion | None = None, now=None) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    discount = 0
+    if promotion is not None:
+        if now is None:
+            raise ValueError("now is required when a promotion is given")
+        if promotion.is_active(now):
+            eligible = sum(
+                p.price_cents * qty
+                for p, qty in cart.lines()
+                if promotion.category is None or p.category == promotion.category
+            )
+            discount = eligible * promotion.percent_off // 100
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    tax = tax_cents(subtotal - discount)
+    order = Order(order_id, lines, subtotal, tax, subtotal - discount + tax, discount)
+    cart.clear()
+    return order
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+from .promotions import Promotion
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "Promotion",
+    "checkout",
+    "format_money",
+    "tax_cents",
+]
+=== FILE test tests/test_tf_time_window_01.py ===
+from datetime import datetime, timedelta
+
+import pytest
+
+from shop import Promotion, checkout
+
+START = datetime(2025, 1, 1, 0, 0)
+END = datetime(2025, 1, 2, 0, 0)
+
+
+def promo(percent=10, category="office"):
+    return Promotion("Sale", percent, START, END, category)
+
+
+def test_is_active_boundaries():
+    p = promo()
+    assert p.is_active(START) is True
+    assert p.is_active(END - timedelta(microseconds=1)) is True
+    assert p.is_active(END) is False
+    assert p.is_active(START - timedelta(microseconds=1)) is False
+
+
+def test_promotion_validation():
+    with pytest.raises(ValueError, match="percent_off must be between 1 and 100"):
+        promo(percent=0)
+    with pytest.raises(ValueError, match="percent_off must be between 1 and 100"):
+        promo(percent=101)
+    with pytest.raises(ValueError, match="end must be after start"):
+        Promotion("Bad", 10, END, START)
+    with pytest.raises(ValueError, match="end must be after start"):
+        Promotion("Bad", 10, START, START)
+
+
+def test_discount_applies_only_to_category_inside_window(cart):
+    cart.add("BOOK")
+    cart.add("MUG")
+    order = checkout(cart, "A1", promo(), datetime(2025, 1, 1, 12, 0))
+    assert order.subtotal_cents == 2000
+    assert order.discount_cents == 120
+    assert order.tax_cents == 188
+    assert order.total_cents == 2068
+    assert cart.is_empty()
+
+
+def test_discount_applies_to_all_lines_without_category(cart):
+    cart.add("BOOK")
+    cart.add("MUG")
+    order = checkout(cart, "A2", promo(25, None), START)
+    assert order.discount_cents == 500
+    assert order.tax_cents == 150
+    assert order.total_cents == 1650
+
+
+def test_discount_rounds_down(cart):
+    cart.add("PEN")
+    order = checkout(cart, "A3", promo(33), START)
+    assert order.discount_cents == 49
+    assert order.tax_cents == 10
+    assert order.total_cents == 111
+
+
+def test_end_is_exclusive_and_before_start_is_inactive(cart):
+    cart.add("BOOK")
+    baseline = checkout(cart, "B0")
+    cart.add("BOOK")
+    at_end = checkout(cart, "B1", promo(), END)
+    cart.add("BOOK")
+    before = checkout(cart, "B2", promo(), START - timedelta(seconds=1))
+    for order in (at_end, before):
+        assert order.discount_cents == 0
+        assert order.subtotal_cents == baseline.subtotal_cents
+        assert order.tax_cents == baseline.tax_cents
+        assert order.total_cents == baseline.total_cents
+
+
+def test_no_eligible_lines_means_no_discount(cart):
+    cart.add("MUG")
+    order = checkout(cart, "C1", promo(50, "office"), START)
+    assert order.discount_cents == 0
+    assert order.total_cents == 880
+
+
+def test_default_checkout_has_zero_discount(cart):
+    cart.add("BOOK", 2)
+    order = checkout(cart, "D1")
+    assert order.discount_cents == 0
+    assert order.total_cents == 2640
+
+
+def test_promotion_without_now_is_rejected_and_cart_untouched(cart):
+    cart.add("BOOK")
+    with pytest.raises(ValueError, match="now is required when a promotion is given"):
+        checkout(cart, "E1", promo())
+    assert cart.quantity("BOOK") == 1
+    assert not cart.is_empty()
+
+
+def test_empty_cart_still_rejected_with_promotion(cart):
+    with pytest.raises(ValueError, match="cart is empty"):
+        checkout(cart, "F1", promo(), START)
+=== END ===

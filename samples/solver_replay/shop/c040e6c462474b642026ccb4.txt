@@ -1,0 +1,97 @@
+=== FILE solution shop/pricing.py ===
+from __future__ import annotations
+
+TAX_RATE_PERCENT = 10
+
+SHIPPING_TIER_MID_CENTS = 5000
+SHIPPING_TIER_HIGH_CENTS = 10000
+SHIPPING_FEE_LOW_CENTS = 899
+SHIPPING_FEE_MID_CENTS = 499
+SHIPPING_FEE_HIGH_CENTS = 0
+EXPRESS_SURCHARGE_CENTS = 600
+MAX_SHIPPING_CENTS = 1200
+
+
+def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on an amount, rounded half up to the nearest cent."""
+    return (amount_cents * rate_percent + 50) // 100
+
+
+def shipping_cents(subtotal_cents: int, express: bool = False, member: bool = False) -> int:
+    """Shipping fee for an order subtotal (before tax)."""
+    if subtotal_cents < 0:
+        raise ValueError("subtotal must be non-negative")
+    if subtotal_cents >= SHIPPING_TIER_HIGH_CENTS:
+        fee = SHIPPING_FEE_HIGH_CENTS
+    elif subtotal_cents >= SHIPPING_TIER_MID_CENTS:
+        fee = SHIPPING_FEE_MID_CENTS
+    else:
+        fee = SHIPPING_FEE_LOW_CENTS
+    if member:
+        fee = (fee + 1) // 2
+    if express:
+        fee += EXPRESS_SURCHARGE_CENTS
+    return min(fee, MAX_SHIPPING_CENTS)
+
+
+def format_money(cents: int) -> str:
+    sign = "-" if cents < 0 else ""
+    cents = abs(cents)
+    return f"{sign}${cents // 100}.{cents % 100:02d}"
+=== END ===
+=== FILE solution shop/checkout.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import shipping_cents as _shipping_cents
+from .pricing import tax_cents
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+    shipping_cents: int = 0
+
+
+def checkout(cart: Cart, order_id: str, shipping=None, member: bool = False) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    if shipping is not None and shipping not in ("standard", "express"):
+        raise ValueError(f"unknown shipping method: {shipping}")
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    tax = tax_cents(subtotal)
+    if shipping is None:
+        ship = 0
+    else:
+        ship = _shipping_cents(subtotal, express=(shipping == "express"), member=member)
+    order = Order(order_id, lines, subtotal, tax, subtotal + tax + ship, ship)
+    cart.clear()
+    return order
+=== END ===
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, shipping_cents, tax_cents
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "checkout",
+    "format_money",
+    "shipping_cents",
+    "tax_cents",
+]
+=== END ===

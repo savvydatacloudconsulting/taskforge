@@ -1,0 +1,60 @@
+{
+  "task_id": "control__bad_patch_does_not_apply",
+  "accepted": false,
+  "seconds": 1.67,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 1.1
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (3 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 2,
+          "FAILED": 3
+        },
+        "seconds": 0.96,
+        "tail": "art.remove(\"BOOK\", 4)\n        cart.add(\"BOOK\", 4)\n        assert cart.quantity(\"BOOK\") == 10\n>       with pytest.raises(ValueError):\n             ^^^^^^^^^^^^^^^^^^^^^^^^^\nE       Failed: DID NOT RAISE ValueError\n\ntests\\test_tf_limit.py:33: Failed\n=================================== PASSES ====================================\n=========================== short test summary info ===========================\nPASSED tests/test_tf_limit.py::test_can_add_up_to_the_limit\nPASSED tests/test_tf_limit.py::test_limit_is_per_product\nFAILED tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected - Fai...\nFAILED tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged\nFAILED tests/test_tf_limit.py::test_removing_makes_room_again - Failed: DID N...\n3 failed, 2 passed in 0.09s\n",
+        "failing_tests": [
+          "tests/test_tf_limit.py::test_limit_applies_across_calls_and_cart_is_unchanged",
+          "tests/test_tf_limit.py::test_one_call_over_the_limit_is_rejected",
+          "tests/test_tf_limit.py::test_removing_makes_room_again"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "fail",
+      "detail": "the reference solution does not apply cleanly",
+      "evidence": {
+        "error": "error: patch failed: shop/cart.py:14\nerror: shop/cart.py: patch does not apply"
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "skipped",
+      "detail": "skipped: needs 'passes_after' first",
+      "evidence": {}
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "skipped",
+      "detail": "skipped: needs 'passes_after' first",
+      "evidence": {}
+    }
+  ]
+}

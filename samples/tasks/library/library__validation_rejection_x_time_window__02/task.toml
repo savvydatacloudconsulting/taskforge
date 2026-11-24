@@ -1,0 +1,21 @@
+schema = "1"
+
+[task]
+id = "library__validation_rejection_x_time_window__02"
+title = "Validated membership windows that gate lending and cap due dates"
+recipes = ["validation_rejection", "time_window"]
+
+[repo]
+name = "library"
+language = "python"
+base_commit = "55a3fafe5b933f800a5dbf32f0a37b50b3a375b5"
+snapshot = true
+
+[run]
+test_command = "{python} -m pytest -q"
+timeout_seconds = 120
+feature_tests = ["tests/test_tf_validation_rejection_x_time_window_02.py"]
+
+[meta]
+generator = "taskforge 0.1.0"
+attempts = 1

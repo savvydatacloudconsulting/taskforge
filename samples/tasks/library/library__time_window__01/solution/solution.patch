@@ -1,0 +1,43 @@
+diff --git a/library/lending.py b/library/lending.py
+index db126a4..6fdb7a8 100644
+--- a/library/lending.py
++++ b/library/lending.py
+@@ -15,6 +15,7 @@ class Library:
+         self._books: dict[str, Book] = {}
+         self._members: dict[str, Member] = {}
+         self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
++        self._amnesty: tuple[date, date] | None = None  # [start, end) window
+ 
+     def add_book(self, book: Book) -> None:
+         if book.isbn in self._books:
+@@ -31,6 +32,21 @@ class Library:
+         on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+         return book.copies - on_loan
+ 
++    def set_fine_amnesty(self, start: date, end: date) -> None:
++        """Waive late fines for returns made on any day in [start, end)."""
++        if end <= start:
++            raise ValueError("invalid amnesty window")
++        self._amnesty = (start, end)
++
++    def clear_fine_amnesty(self) -> None:
++        self._amnesty = None
++
++    def is_amnesty_active(self, today: date) -> bool:
++        if self._amnesty is None:
++            return False
++        start, end = self._amnesty
++        return start <= today < end
++
+     def lend(self, isbn: str, member_id: str, today: date) -> date:
+         """Lend a book and return its due date."""
+         self._book(isbn)
+@@ -49,6 +65,8 @@ class Library:
+         if key not in self._loans:
+             raise KeyError("no such loan")
+         due = self._loans.pop(key)
++        if self.is_amnesty_active(today):
++            return 0
+         late_days = max(0, (today - due).days)
+         return late_days * FINE_CENTS_PER_DAY
+ 

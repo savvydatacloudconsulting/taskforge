@@ -1,0 +1,98 @@
+{
+  "task_id": "shop__quantity_limit_x_rounding_policy__07",
+  "accepted": true,
+  "seconds": 18.19,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 0.72
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 1.34,
+        "tail": "py ____\nImportError while importing test module '<repo>\\tests\\test_tf_quantity_limit_x_rounding_policy_07.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_quantity_limit_x_rounding_policy_07.py:3: in <module>\n    from shop import (\nE   ImportError: cannot import name 'QuantityLimitError' from 'shop' (<repo>\\shop\\__init__.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_quantity_limit_x_rounding_policy_07.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.17s\n",
+        "failing_tests": [
+          "tests/test_tf_quantity_limit_x_rounding_policy_07.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (15 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 15
+            },
+            "seconds": 0.81
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 15
+            },
+            "seconds": 0.8
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 15
+            },
+            "seconds": 0.99
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 30
+        },
+        "seconds": 0.93
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 11 of 12 broken versions (92%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 11,
+        "survived": [
+          "shop/cart.py: line 14: constant 0 -> 1"
+        ],
+        "kill_rate": 0.917,
+        "available_sites": 33,
+        "required": 0.6
+      }
+    }
+  ]
+}

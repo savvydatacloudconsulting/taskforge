@@ -1,0 +1,90 @@
+diff --git a/shop/__init__.py b/shop/__init__.py
+index 3001edd..3220516 100644
+--- a/shop/__init__.py
++++ b/shop/__init__.py
+@@ -1,8 +1,17 @@
+ """A tiny shopping-cart library used as a demo repository for TaskForge."""
+ 
+-from .cart import Cart
++from .cart import Cart, CartEvent
+ from .catalog import Catalog, Product
+ from .checkout import Order, checkout
+ from .pricing import format_money, tax_cents
+ 
+-__all__ = ["Cart", "Catalog", "Product", "Order", "checkout", "format_money", "tax_cents"]
++__all__ = [
++    "Cart",
++    "CartEvent",
++    "Catalog",
++    "Product",
++    "Order",
++    "checkout",
++    "format_money",
++    "tax_cents",
++]
+diff --git a/shop/cart.py b/shop/cart.py
+index 722de95..43a83be 100644
+--- a/shop/cart.py
++++ b/shop/cart.py
+@@ -1,22 +1,51 @@
+ from __future__ import annotations
+ 
++from dataclasses import dataclass
++
+ from .catalog import Catalog, Product
+ 
+ 
++@dataclass(frozen=True)
++class CartEvent:
++    action: str
++    sku: str | None
++    quantity: int
++    ok: bool
++
++
+ class Cart:
+     """Items a customer wants to buy: SKU -> quantity."""
+ 
+     def __init__(self, catalog: Catalog):
+         self.catalog = catalog
+         self._lines: dict[str, int] = {}
++        self._events: list[CartEvent] = []
++
++    def history(self) -> list[CartEvent]:
++        return list(self._events)
+ 
+     def add(self, sku: str, quantity: int = 1) -> None:
+-        if quantity <= 0:
+-            raise ValueError("quantity must be positive")
+-        self.catalog.get(sku)  # raises KeyError for unknown products
++        try:
++            if quantity <= 0:
++                raise ValueError("quantity must be positive")
++            self.catalog.get(sku)  # raises KeyError for unknown products
++        except (ValueError, KeyError):
++            self._events.append(CartEvent("add", sku, quantity, False))
++            raise
+         self._lines[sku] = self._lines.get(sku, 0) + quantity
++        self._events.append(CartEvent("add", sku, quantity, True))
+ 
+     def remove(self, sku: str, quantity: int | None = None) -> None:
++        held = self._lines.get(sku, 0)
++        try:
++            self._remove(sku, quantity)
++        except (KeyError, ValueError):
++            self._events.append(CartEvent("remove", sku, quantity or 0, False))
++            raise
++        removed = held if quantity is None or quantity >= held else quantity
++        self._events.append(CartEvent("remove", sku, removed, True))
++
++    def _remove(self, sku: str, quantity: int | None) -> None:
+         if sku not in self._lines:
+             raise KeyError(f"not in cart: {sku}")
+         if quantity is None or quantity >= self._lines[sku]:
+@@ -39,4 +68,6 @@ class Cart:
+         return not self._lines
+ 
+     def clear(self) -> None:
++        if self._lines:
++            self._events.append(CartEvent("clear", None, sum(self._lines.values()), True))
+         self._lines.clear()

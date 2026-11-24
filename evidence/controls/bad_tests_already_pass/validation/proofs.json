@@ -1,0 +1,99 @@
+{
+  "task_id": "control__bad_tests_already_pass",
+  "accepted": false,
+  "seconds": 10.09,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 1.1
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "fail",
+      "detail": "the feature tests already PASS on the original repository, so they do not test any new behaviour",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 1
+        },
+        "seconds": 1.12,
+        "tail": ".                                                                        [100%]\n=================================== PASSES ====================================\n=========================== short test summary info ===========================\nPASSED tests/test_tf_limit.py::test_zero_quantity_rejected\n1 passed in 0.01s\n"
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (1 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 1
+            },
+            "seconds": 0.92
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 1
+            },
+            "seconds": 0.97
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 1
+            },
+            "seconds": 0.85
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 16
+        },
+        "seconds": 0.84
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "fail",
+      "detail": "tests caught only 0 of 5 broken versions (0%, need 60%)",
+      "evidence": {
+        "mutants": 5,
+        "killed": 0,
+        "survived": [
+          "shop/cart.py: line 20: negated if condition",
+          "shop/cart.py: line 19: arithmetic Add -> Sub",
+          "shop/cart.py: line 19: constant 0 -> 1",
+          "shop/cart.py: line 5: constant 10 -> 11",
+          "shop/cart.py: line 20: comparison Gt -> GtE"
+        ],
+        "kill_rate": 0.0,
+        "available_sites": 5,
+        "required": 0.6
+      }
+    }
+  ]
+}

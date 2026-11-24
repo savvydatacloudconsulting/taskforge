@@ -1,0 +1,289 @@
+=== TITLE ===
+Member fine discounts with a half-up 5-cent rounding policy
+=== INSTRUCTION ===
+## Background
+
+Late fines are currently `late_days * FINE_CENTS_PER_DAY` cents. The library now wants to give individual members a percentage discount on their late fines (for example a volunteer or a student discount). A percentage of a fine is usually not a whole number of cents, so the library needs an exact rounding policy: the discounted fine is rounded to the nearest 5 cents, with halves rounded up, and any fine that is not fully waived is charged at least 5 cents.
+
+## Requirements
+
+1. Add a module-level constant `FINE_ROUND_UNIT_CENTS = 5` in `library/lending.py`.
+2. Add a module-level function `discounted_fine(fine_cents: int, percent: int) -> int` in `library/lending.py` that returns the amount payable in cents after applying a discount of `percent` percent to `fine_cents`. The exact amount is `fine_cents * (100 - percent) / 100`. It is rounded to the nearest multiple of `FINE_ROUND_UNIT_CENTS`; an exact tie between two multiples goes UP (round half up, not banker's rounding).
+3. Minimum charge: if `fine_cents > 0` and `percent < 100`, the result is never below `FINE_ROUND_UNIT_CENTS`, even when the exact amount rounds down to 0. If `fine_cents == 0` or `percent == 100`, the result is `0`.
+4. `discounted_fine` raises `ValueError("fine_cents must not be negative")` when `fine_cents < 0`, and `ValueError("percent must be between 0 and 100")` when `percent` is below 0 or above 100 (0 and 100 are both valid). The fine check is done first.
+5. Add `Library.set_fine_discount(member_id: str, percent: int) -> None`. It stores the member's discount percent (a later call replaces the earlier value; `0` means no discount). An unknown member raises `KeyError("unknown member: <id>")` (the same error the library already uses). A percent outside 0 to 100 raises `ValueError("percent must be between 0 and 100")`. The member is checked before the percent, and an invalid call must not change the stored discount.
+6. `Library.return_book` must return `discounted_fine(late_days * FINE_CENTS_PER_DAY, discount)` where `discount` is the percent set for the returning member at the time of the return (default `0`). Members without a discount, and members with discount `0`, get exactly the same fines as before. Discounts are per member and do not affect other members.
+7. Export `discounted_fine` and `FINE_ROUND_UNIT_CENTS` from the `library` package (add them to `__all__`).
+
+## Public interface
+
+- `library.lending.FINE_ROUND_UNIT_CENTS == 5` (also importable from `library`)
+- `library.lending.discounted_fine(fine_cents: int, percent: int) -> int` (also importable from `library`)
+- `Library.set_fine_discount(member_id: str, percent: int) -> None`
+- Errors: `ValueError("fine_cents must not be negative")`, `ValueError("percent must be between 0 and 100")`, `KeyError("unknown member: <id>")`
+- `Library.return_book(isbn, member_id, today) -> int` keeps its signature; it now applies the member's discount.
+
+## Examples
+
+```python
+discounted_fine(50, 10)    # exact 45.0   -> 45
+discounted_fine(50, 15)    # exact 42.5   -> tie between 40 and 45 -> 45
+discounted_fine(50, 25)    # exact 37.5   -> tie between 35 and 40 -> 40
+discounted_fine(100, 33)   # exact 67.0   -> nearest multiple of 5 is 65
+discounted_fine(150, 95)   # exact 7.5    -> tie between 5 and 10 -> 10
+discounted_fine(150, 98)   # exact 3.0    -> rounds to 5
+discounted_fine(50, 99)    # exact 0.5    -> rounds to 0, minimum charge -> 5
+discounted_fine(50, 100)   # fully waived -> 0
+discounted_fine(0, 50)     # nothing owed -> 0
+
+lib.set_fine_discount("m1", 25)
+lib.lend("111", "m1", today)
+lib.return_book("111", "m1", today + timedelta(days=15))  # 1 day late: fine 50, discounted -> 40
+```
+=== FILE solution library/lending.py ===
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+FINE_ROUND_UNIT_CENTS = 5
+
+
+def _check_percent(percent: int) -> None:
+    if not 0 <= percent <= 100:
+        raise ValueError("percent must be between 0 and 100")
+
+
+def discounted_fine(fine_cents: int, percent: int) -> int:
+    """Apply a percentage discount, rounding to the nearest 5 cents (half up, minimum 5 cents)."""
+    if fine_cents < 0:
+        raise ValueError("fine_cents must not be negative")
+    _check_percent(percent)
+    if fine_cents == 0 or percent == 100:
+        return 0
+    numerator = fine_cents * (100 - percent)
+    denominator = 100 * FINE_ROUND_UNIT_CENTS
+    units = (2 * numerator + denominator) // (2 * denominator)
+    return max(1, units) * FINE_ROUND_UNIT_CENTS
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+        self._discounts: dict[str, int] = {}  # member_id -> fine discount percent
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def set_fine_discount(self, member_id: str, percent: int) -> None:
+        """Set the percentage discount applied to this member's late fines."""
+        self._member(member_id)
+        _check_percent(percent)
+        self._discounts[member_id] = percent
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents, after any member discount."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        fine = late_days * FINE_CENTS_PER_DAY
+        return discounted_fine(fine, self._discounts.get(member_id, 0))
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+=== FILE solution library/__init__.py ===
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import (
+    FINE_CENTS_PER_DAY,
+    FINE_ROUND_UNIT_CENTS,
+    LOAN_DAYS,
+    Library,
+    discounted_fine,
+)
+from .models import Book, Member
+
+__all__ = [
+    "Book",
+    "Member",
+    "Library",
+    "LOAN_DAYS",
+    "FINE_CENTS_PER_DAY",
+    "FINE_ROUND_UNIT_CENTS",
+    "discounted_fine",
+]
+=== FILE test tests/test_tf_rounding_policy_04.py ===
+from datetime import timedelta
+
+import pytest
+
+from library import FINE_ROUND_UNIT_CENTS, discounted_fine
+
+
+def _return_late(lib, today, member_id, late_days, isbn="111"):
+    due = lib.lend(isbn, member_id, today)
+    return lib.return_book(isbn, member_id, due + timedelta(days=late_days))
+
+
+def test_unit_constant():
+    assert FINE_ROUND_UNIT_CENTS == 5
+
+
+def test_exact_amounts_are_unchanged():
+    assert discounted_fine(50, 10) == 45
+    assert discounted_fine(100, 50) == 50
+    assert discounted_fine(150, 0) == 150
+
+
+def test_halves_round_up():
+    assert discounted_fine(50, 15) == 45  # 42.5 -> 45
+    assert discounted_fine(50, 25) == 40  # 37.5 -> 40
+    assert discounted_fine(50, 5) == 50  # 47.5 -> 50
+    assert discounted_fine(50, 35) == 35  # 32.5 -> 35
+    assert discounted_fine(50, 55) == 25  # 22.5 -> 25
+    assert discounted_fine(150, 95) == 10  # 7.5 -> 10
+
+
+def test_non_ties_round_to_nearest():
+    assert discounted_fine(100, 33) == 65  # 67 -> 65
+    assert discounted_fine(150, 98) == 5  # 3 -> 5
+    assert discounted_fine(100, 67) == 35  # 33 -> 35
+    assert discounted_fine(100, 62) == 40  # 38 -> 40
+
+
+def test_minimum_charge_for_tiny_amounts():
+    assert discounted_fine(50, 99) == 5  # 0.5 -> 0 -> minimum 5
+    assert discounted_fine(100, 99) == 5  # 1.0 -> 0 -> minimum 5
+
+
+def test_zero_cases():
+    assert discounted_fine(0, 50) == 0
+    assert discounted_fine(0, 0) == 0
+    assert discounted_fine(50, 100) == 0
+    assert discounted_fine(500, 100) == 0
+
+
+def test_discounted_fine_validation():
+    with pytest.raises(ValueError, match="percent must be between 0 and 100"):
+        discounted_fine(50, -1)
+    with pytest.raises(ValueError, match="percent must be between 0 and 100"):
+        discounted_fine(50, 101)
+    with pytest.raises(ValueError, match="fine_cents must not be negative"):
+        discounted_fine(-50, 10)
+    with pytest.raises(ValueError, match="fine_cents must not be negative"):
+        discounted_fine(-50, 500)
+
+
+def test_return_applies_member_discount(lib, today):
+    lib.set_fine_discount("m1", 25)
+    assert _return_late(lib, today, "m1", 1) == 40  # fine 50 -> 37.5 -> 40
+
+
+def test_return_with_multiple_days_and_halves(lib, today):
+    lib.set_fine_discount("m1", 15)
+    assert _return_late(lib, today, "m1", 3) == 130  # fine 150 -> 127.5 -> 130
+
+
+def test_return_on_time_or_early_costs_nothing(lib, today):
+    lib.set_fine_discount("m1", 25)
+    assert _return_late(lib, today, "m1", 0) == 0
+    assert _return_late(lib, today, "m1", -5, isbn="222") == 0
+
+
+def test_return_minimum_charge(lib, today):
+    lib.set_fine_discount("m1", 99)
+    assert _return_late(lib, today, "m1", 1) == 5
+
+
+def test_full_discount_waives_fine(lib, today):
+    lib.set_fine_discount("m1", 100)
+    assert _return_late(lib, today, "m1", 4) == 0
+
+
+def test_no_discount_keeps_old_fines(lib, today):
+    assert _return_late(lib, today, "m2", 3) == 150
+    lib.set_fine_discount("m1", 0)
+    assert _return_late(lib, today, "m1", 2) == 100
+
+
+def test_discounts_are_per_member(lib, today):
+    lib.set_fine_discount("m1", 50)
+    assert _return_late(lib, today, "m1", 2) == 50
+    assert _return_late(lib, today, "m2", 2) == 100
+
+
+def test_later_discount_replaces_earlier(lib, today):
+    lib.set_fine_discount("m1", 50)
+    lib.set_fine_discount("m1", 10)
+    assert _return_late(lib, today, "m1", 1) == 45
+    lib.set_fine_discount("m1", 0)
+    assert _return_late(lib, today, "m1", 1) == 50
+
+
+def test_discount_in_effect_at_return_time_is_used(lib, today):
+    due = lib.lend("111", "m1", today)
+    lib.set_fine_discount("m1", 50)
+    assert lib.return_book("111", "m1", due + timedelta(days=2)) == 50
+
+
+def test_set_fine_discount_errors(lib, today):
+    with pytest.raises(KeyError, match="unknown member: zz"):
+        lib.set_fine_discount("zz", 10)
+    with pytest.raises(ValueError, match="percent must be between 0 and 100"):
+        lib.set_fine_discount("m1", 101)
+    with pytest.raises(ValueError, match="percent must be between 0 and 100"):
+        lib.set_fine_discount("m1", -1)
+
+
+def test_invalid_discount_does_not_change_stored_value(lib, today):
+    lib.set_fine_discount("m1", 50)
+    with pytest.raises(ValueError):
+        lib.set_fine_discount("m1", 150)
+    assert _return_late(lib, today, "m1", 2) == 50
+=== END ===

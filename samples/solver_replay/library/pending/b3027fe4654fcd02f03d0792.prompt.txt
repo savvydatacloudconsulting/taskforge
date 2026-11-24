@@ -1,0 +1,206 @@
+[SYSTEM]
+You are a careful software engineer. You implement feature requests in existing code. You follow the requested output format exactly, with no commentary outside it.
+
+[USER]
+# Task
+Implement the feature request below in the repository shown. Hidden tests will check your work against the
+Requirements and the Public interface. You cannot see them. The existing tests must keep passing.
+
+# Repository
+name: library
+language: python
+test command: {python} -m pytest -q
+
+## File tree
+library/__init__.py
+library/lending.py
+library/models.py
+tests/conftest.py
+tests/test_lending.py
+
+## FILE library/__init__.py (full content)
+```
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
+from .models import Book, Member
+
+__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
+```
+
+## FILE library/lending.py (full content)
+```
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+```
+
+## FILE library/models.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Book:
+    isbn: str
+    title: str
+    copies: int = 1
+
+
+@dataclass(frozen=True)
+class Member:
+    member_id: str
+    name: str
+```
+
+## Existing tests (2 files): tests/conftest.py, tests/test_lending.py
+## Example test file tests/conftest.py (style reference)
+```
+from datetime import date
+
+import pytest
+
+from library import Book, Library, Member
+
+TODAY = date(2026, 3, 1)
+
+
+@pytest.fixture
+def lib():
+    library = Library()
+    library.add_book(Book("111", "Dune", copies=2))
+    library.add_book(Book("222", "Emma", copies=1))
+    library.add_member(Member("m1", "Ana"))
+    library.add_member(Member("m2", "Ben"))
+    return library
+
+
+@pytest.fixture
+def today():
+    return TODAY
+```
+
+# Feature request
+## Background
+
+Late fines are currently a flat `FINE_CENTS_PER_DAY` (50 cents) per late day. The library wants two independent adjustments to the daily fine rate that can both apply to the same return:
+
+* a **high-demand** flag on a book (popular titles are fined more heavily), and
+* a **reduced-rate** flag on a member (e.g. students and seniors are fined less).
+
+When both apply they must be combined in a fixed order, and the resulting daily rate may never exceed a maximum.
+
+## Requirements
+
+1. Add three module-level constants in `library/lending.py`, also exported from the `library` package: `DEMAND_MULTIPLIER = 3`, `REDUCED_MEMBER_DISCOUNT_CENTS = 20` and `MAX_DAILY_RATE_CENTS = 140`.
+2. `Library.set_high_demand(isbn, flag)` marks (`flag` true) or unmarks (`flag` false) a book as high-demand. Books are not high-demand by default. An unknown ISBN raises `KeyError`.
+3. `Library.set_reduced_rate(member_id, flag)` marks (`flag` true) or unmarks (`flag` false) a member as reduced-rate. Members are not reduced-rate by default. An unknown member raises `KeyError`.
+4. `Library.daily_fine_rate(isbn, member_id)` returns the daily fine in cents for that book and member. It starts from `FINE_CENTS_PER_DAY` and applies the rules in this exact order:
+   1. if the book is high-demand, multiply the rate by `DEMAND_MULTIPLIER`;
+   2. then, if the member is reduced-rate, subtract `REDUCED_MEMBER_DISCOUNT_CENTS`;
+   3. finally, cap the result at `MAX_DAILY_RATE_CENTS` (the cap is applied last, after the discount).
+   An unknown ISBN or unknown member raises `KeyError`.
+5. `Library.return_book` must compute the fine as `late_days * daily_fine_rate(isbn, member_id)`, using the flags as they are at the moment of return. Late days are computed exactly as before (never negative), so an on-time return costs 0 whatever the flags. The existing errors (`KeyError("no such loan")`) are unchanged, and fines for books and members with no flags set stay exactly as before.
+6. Flags are independent per book and per member: a flag set on one book or member never changes the rate for another. Flags persist after a book is returned.
+
+## Public interface
+
+* `library.lending.DEMAND_MULTIPLIER: int` (3), `REDUCED_MEMBER_DISCOUNT_CENTS: int` (20), `MAX_DAILY_RATE_CENTS: int` (140); all three importable from `library` as well.
+* `Library.set_high_demand(self, isbn: str, flag: bool) -> None`
+* `Library.set_reduced_rate(self, member_id: str, flag: bool) -> None`
+* `Library.daily_fine_rate(self, isbn: str, member_id: str) -> int`
+* Unknown ISBN or member id raises `KeyError` (same lookups as the existing code).
+* `Library.return_book(isbn, member_id, today) -> int` keeps its signature and returns the fine in cents.
+
+## Examples
+
+```python
+lib.set_high_demand("111", True)
+lib.daily_fine_rate("111", "m2")   # 150 capped to 140
+lib.set_reduced_rate("m1", True)
+lib.daily_fine_rate("222", "m1")   # 50 - 20 = 30
+lib.daily_fine_rate("111", "m1")   # 150 - 20 = 130 (under the cap)
+```
+
+If "111" is high-demand and "m1" is reduced-rate, returning it 3 days late costs `3 * 130 = 390` cents. If only the book is high-demand, it costs `3 * 140 = 420` cents. If neither flag is set, it costs `3 * 50 = 150` cents.
+
+# Rules
+1. Output the COMPLETE new content of every non-test file you modify or create. Do not output unchanged files.
+2. Do not edit or delete existing tests and do not add tests.
+3. Use only the standard library and dependencies the repository already uses.
+4. Follow every requirement exactly: names, signatures, error types, exact messages and boundary behaviour.
+
+# Output format (exact)
+=== FILE solution <relative/path> ===
+<complete new file content>
+=== END ===
+(Repeat the FILE section for every file you modify or create. No code fences around file content.
+No text outside the sections.)

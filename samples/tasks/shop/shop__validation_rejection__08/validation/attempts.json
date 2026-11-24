@@ -1,0 +1,19 @@
+{
+  "task_id": "shop__validation_rejection__08",
+  "status": "accepted",
+  "title": "Validate order identifiers in checkout",
+  "recipes": [
+    "validation_rejection"
+  ],
+  "reason": "",
+  "nearest_task": "shop__rounding_policy_x_validation_rejection__04",
+  "nearest_distance": 0.7764,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 17.10233630000039
+    }
+  ]
+}

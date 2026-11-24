@@ -1,0 +1,268 @@
+=== TITLE ===
+Bulk add with duplicate handling for Catalog and Cart
+=== INSTRUCTION ===
+## Background
+
+Products and cart lines are currently added one at a time. `Catalog.add` rejects any repeated SKU, and `Cart.add` has to be called once per line. Bulk loading, for example from an imported product feed or a pasted order list, will contain repeated entries. The right handling depends on what is repeated:
+
+- In a catalog, a repeated product that is *identical* (all fields equal) is harmless and is ignored. A repeated SKU with *different* data is a real conflict and is rejected.
+- In a cart, repeated SKUs are merged by summing their quantities.
+
+Both bulk operations must be atomic: if any entry is invalid, nothing is changed.
+
+## Requirements
+
+1. `Catalog.add_all(products)` adds every product from an iterable and returns the number of products that were newly added to the catalog.
+2. A product that is equal (`==`) to a product already in the catalog is ignored and not counted.
+3. A product that is equal to an earlier product in the same input is ignored and not counted. Only the first occurrence counts.
+4. A product whose SKU matches a product already in the catalog, or an earlier product in the same input, but which differs in any other field, raises `ValueError` with the message `conflicting sku: <sku>`.
+5. `Catalog.add_all` is atomic. If a `ValueError` is raised, the catalog is unchanged, including products that appeared earlier in the same input.
+6. `Cart.add_all(items)` takes an iterable of `(sku, quantity)` tuples and returns the number of distinct SKUs in the input.
+7. Repeated SKUs in the input are merged. Their quantities are summed and added to any quantity already in the cart for that SKU.
+8. A quantity of zero or less raises `ValueError("quantity must be positive")`. An unknown SKU raises `KeyError` (the same error `Catalog.get` raises).
+9. `Cart.add_all` is atomic. If any entry is invalid, the cart is unchanged, even if valid entries came before the invalid one.
+10. An empty input is allowed. It changes nothing and returns `0`.
+11. Existing behaviour of `Catalog.add`, `Cart.add` and everything else is unchanged.
+
+## Public interface
+
+- `Catalog.add_all(self, products) -> int`
+  - `products` is an iterable of `Product`.
+  - Raises `ValueError("conflicting sku: <sku>")` on a conflicting repeat.
+- `Cart.add_all(self, items) -> int`
+  - `items` is an iterable of `(sku: str, quantity: int)` tuples.
+  - Raises `ValueError("quantity must be positive")` for a quantity <= 0.
+  - Raises `KeyError` for an unknown SKU.
+
+## Examples
+
+```python
+catalog = Catalog([Product("PEN", "Pen", 150)])
+catalog.add_all([
+    Product("PEN", "Pen", 150),     # identical to existing: ignored
+    Product("MUG", "Mug", 800),     # new
+    Product("MUG", "Mug", 800),     # identical repeat in input: ignored
+])                                  # -> 1
+
+catalog.add_all([Product("PEN", "Pen", 175)])   # ValueError: conflicting sku: PEN
+
+cart = Cart(catalog)
+cart.add_all([("PEN", 2), ("MUG", 1), ("PEN", 3)])   # -> 2
+cart.quantity("PEN")                                 # -> 5
+```
+=== FILE solution shop/catalog.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Product:
+    sku: str
+    name: str
+    price_cents: int
+    category: str = "general"
+
+
+class Catalog:
+    """A set of products, looked up by SKU."""
+
+    def __init__(self, products=()):
+        self._products: dict[str, Product] = {}
+        for product in products:
+            self.add(product)
+
+    def add(self, product: Product) -> None:
+        if product.sku in self._products:
+            raise ValueError(f"duplicate sku: {product.sku}")
+        self._products[product.sku] = product
+
+    def add_all(self, products) -> int:
+        """Add many products at once; identical repeats are ignored.
+
+        Returns the number of newly added products. A repeated SKU with
+        different data raises ValueError and leaves the catalog unchanged.
+        """
+        pending: dict[str, Product] = {}
+        for product in products:
+            existing = pending.get(product.sku, self._products.get(product.sku))
+            if existing is None:
+                pending[product.sku] = product
+            elif existing != product:
+                raise ValueError(f"conflicting sku: {product.sku}")
+        self._products.update(pending)
+        return len(pending)
+
+    def get(self, sku: str) -> Product:
+        try:
+            return self._products[sku]
+        except KeyError:
+            raise KeyError(f"unknown sku: {sku}") from None
+
+    def __contains__(self, sku: str) -> bool:
+        return sku in self._products
+
+    def by_category(self, category: str) -> list[Product]:
+        return [p for p in self._products.values() if p.category == category]
+=== FILE solution shop/cart.py ===
+from __future__ import annotations
+
+from .catalog import Catalog, Product
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog):
+        self.catalog = catalog
+        self._lines: dict[str, int] = {}
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        self.catalog.get(sku)  # raises KeyError for unknown products
+        self._lines[sku] = self._lines.get(sku, 0) + quantity
+
+    def add_all(self, items) -> int:
+        """Add many (sku, quantity) pairs; repeated SKUs are merged by summing.
+
+        Returns the number of distinct SKUs in the input. If any entry is
+        invalid, nothing is added.
+        """
+        merged: dict[str, int] = {}
+        for sku, quantity in items:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self.catalog.get(sku)  # raises KeyError for unknown products
+            merged[sku] = merged.get(sku, 0) + quantity
+        for sku, quantity in merged.items():
+            self._lines[sku] = self._lines.get(sku, 0) + quantity
+        return len(merged)
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        if sku not in self._lines:
+            raise KeyError(f"not in cart: {sku}")
+        if quantity is None or quantity >= self._lines[sku]:
+            del self._lines[sku]
+        else:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self._lines[sku] -= quantity
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        self._lines.clear()
+=== FILE test tests/test_tf_dedup_merge_02.py ===
+import pytest
+
+from shop import Cart, Catalog, Product
+
+
+def test_catalog_add_all_counts_new_products():
+    catalog = Catalog()
+    added = catalog.add_all([
+        Product("PEN", "Pen", 150, "office"),
+        Product("MUG", "Mug", 800, "kitchen"),
+    ])
+    assert added == 2
+    assert "PEN" in catalog
+    assert catalog.get("MUG").price_cents == 800
+
+
+def test_catalog_add_all_ignores_identical_existing_product(catalog):
+    added = catalog.add_all([
+        Product("PEN", "Pen", 150, "office"),
+        Product("LAMP", "Lamp", 2500),
+    ])
+    assert added == 1
+    assert catalog.get("LAMP").name == "Lamp"
+    assert catalog.get("PEN").price_cents == 150
+
+
+def test_catalog_add_all_ignores_identical_repeat_in_input():
+    catalog = Catalog()
+    added = catalog.add_all([
+        Product("MUG", "Mug", 800),
+        Product("MUG", "Mug", 800),
+        Product("MUG", "Mug", 800),
+    ])
+    assert added == 1
+    assert len(catalog.by_category("general")) == 1
+
+
+def test_catalog_add_all_conflict_with_existing_product(catalog):
+    with pytest.raises(ValueError, match="conflicting sku: PEN"):
+        catalog.add_all([Product("PEN", "Pen", 175, "office")])
+
+
+def test_catalog_add_all_conflict_within_input_is_atomic(catalog):
+    with pytest.raises(ValueError, match="conflicting sku: LAMP"):
+        catalog.add_all([
+            Product("DESK", "Desk", 9000),
+            Product("LAMP", "Lamp", 2500),
+            Product("LAMP", "Lamp", 2600),
+        ])
+    assert "DESK" not in catalog
+    assert "LAMP" not in catalog
+
+
+def test_catalog_add_all_conflict_on_non_price_field(catalog):
+    with pytest.raises(ValueError, match="conflicting sku: MUG"):
+        catalog.add_all([Product("MUG", "Mug", 800, "office")])
+
+
+def test_catalog_add_all_empty_input(catalog):
+    assert catalog.add_all([]) == 0
+    assert catalog.get("BOOK").price_cents == 1200
+
+
+def test_cart_add_all_merges_repeated_skus(cart):
+    distinct = cart.add_all([("PEN", 2), ("MUG", 1), ("PEN", 3)])
+    assert distinct == 2
+    assert cart.quantity("PEN") == 5
+    assert cart.quantity("MUG") == 1
+    assert cart.subtotal_cents() == 5 * 150 + 800
+
+
+def test_cart_add_all_adds_to_existing_quantity(cart):
+    cart.add("PEN", 4)
+    assert cart.add_all([("PEN", 1), ("PEN", 2)]) == 1
+    assert cart.quantity("PEN") == 7
+
+
+def test_cart_add_all_empty_input(cart):
+    assert cart.add_all([]) == 0
+    assert cart.is_empty()
+
+
+def test_cart_add_all_invalid_quantity_is_atomic(cart):
+    cart.add("BOOK", 1)
+    with pytest.raises(ValueError, match="quantity must be positive"):
+        cart.add_all([("PEN", 2), ("MUG", 0)])
+    assert cart.quantity("PEN") == 0
+    assert cart.quantity("MUG") == 0
+    assert cart.quantity("BOOK") == 1
+
+
+def test_cart_add_all_negative_quantity_rejected(cart):
+    with pytest.raises(ValueError, match="quantity must be positive"):
+        cart.add_all([("PEN", -1)])
+    assert cart.is_empty()
+
+
+def test_cart_add_all_unknown_sku_is_atomic(cart):
+    with pytest.raises(KeyError):
+        cart.add_all([("PEN", 2), ("NOPE", 1)])
+    assert cart.is_empty()
+=== END ===

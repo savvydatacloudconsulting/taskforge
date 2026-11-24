@@ -1,0 +1,21 @@
+schema = "1"
+
+[task]
+id = "shop__quantity_limit_x_rounding_policy__07"
+title = "Per-item quantity cap on carts with half-even per-unit tax at checkout"
+recipes = ["quantity_limit", "rounding_policy"]
+
+[repo]
+name = "shop"
+language = "python"
+base_commit = "edb821f4489b12ec52b8f1e33bd2bc7319b7cf9f"
+snapshot = true
+
+[run]
+test_command = "{python} -m pytest -q"
+timeout_seconds = 120
+feature_tests = ["tests/test_tf_quantity_limit_x_rounding_policy_07.py"]
+
+[meta]
+generator = "taskforge 0.1.0"
+attempts = 1

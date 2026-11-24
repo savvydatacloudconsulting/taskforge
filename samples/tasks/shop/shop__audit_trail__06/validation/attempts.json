@@ -1,0 +1,19 @@
+{
+  "task_id": "shop__audit_trail__06",
+  "status": "accepted",
+  "title": "Cart audit trail of add, remove and clear events",
+  "recipes": [
+    "audit_trail"
+  ],
+  "reason": "",
+  "nearest_task": "shop__dedup_merge__02",
+  "nearest_distance": 0.796,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 20.086829300000318
+    }
+  ]
+}

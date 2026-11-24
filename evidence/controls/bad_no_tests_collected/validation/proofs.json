@@ -1,0 +1,60 @@
+{
+  "task_id": "control__bad_no_tests_collected",
+  "accepted": false,
+  "seconds": 2.74,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 1.1
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "fail",
+      "detail": "no tests were collected, so nothing was checked",
+      "evidence": {
+        "returncode": 5,
+        "timed_out": false,
+        "counts": {},
+        "seconds": 0.92,
+        "tail": "\nno tests ran in 0.01s\n"
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "fail",
+      "detail": "the feature tests FAIL with the reference solution applied",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 5,
+            "timed_out": false,
+            "counts": {},
+            "seconds": 1.15
+          }
+        ],
+        "tail": "\nno tests ran in 0.01s\n"
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "skipped",
+      "detail": "skipped: needs 'passes_after' first",
+      "evidence": {}
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "skipped",
+      "detail": "skipped: needs 'passes_after' first",
+      "evidence": {}
+    }
+  ]
+}

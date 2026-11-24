@@ -1,0 +1,204 @@
+=== TITLE ===
+Stack category discounts with a flat coupon under a percentage cap
+=== INSTRUCTION ===
+## Background
+
+The shop library can total a cart but has no way to apply promotions. Two independent promotions must now be able
+to apply to the same cart: a per-category percentage discount and a flat-amount coupon. They have to be combined
+with a fixed order of application and an overall cap on how much of the subtotal can be discounted.
+
+## Requirements
+
+1. Add a new module `shop/promotions.py` with the function `stacked_discount_cents` (see "Public interface"). All
+   amounts are integer cents.
+2. Category discount (applied first): `category_percents` maps a product category name to a whole percentage. For
+   every cart line whose product category is a key of the mapping, the line discount is
+   `unit price * quantity * percent // 100` (integer floor division, per line). The category discount is the sum of
+   the line discounts. Categories not present in the mapping are unaffected, and keys that match no product in the
+   cart are ignored.
+3. Coupon (applied second): `coupon_cents` is a flat amount taken off what is left after the category discount. The
+   coupon that is actually applied is `min(coupon_cents, subtotal - category_discount)`, so the coupon can never
+   push the total discount past the subtotal.
+4. Cap: the combined discount (category discount plus applied coupon) can never exceed
+   `subtotal * cap_percent // 100` (integer floor division). When the cap is exceeded the result is exactly that cap
+   value.
+5. The function returns the final combined discount in cents. With an empty cart it returns 0. When only one of the
+   two promotions is supplied (no `category_percents`, or `coupon_cents` of 0) only that promotion contributes.
+6. Validation, raising `ValueError` with exactly these messages, checked before any calculation (and also for an
+   empty cart):
+   - any percentage in `category_percents` that is below 0 or above 100: `"percent must be between 0 and 100"`
+   - `coupon_cents` below 0: `"coupon must not be negative"`
+   - `cap_percent` below 0 or above 100: `"cap_percent must be between 0 and 100"`
+7. Also add `discounted_subtotal_cents`, which takes the same arguments and returns the cart subtotal minus the
+   value of `stacked_discount_cents`.
+8. Both functions must be importable from the package root: `from shop import stacked_discount_cents,
+   discounted_subtotal_cents`. The cart itself must not be modified.
+
+## Public interface
+
+In `shop/promotions.py` (and re-exported from `shop`):
+
+```
+stacked_discount_cents(cart: Cart, category_percents: dict[str, int] | None = None,
+                       coupon_cents: int = 0, cap_percent: int = 50) -> int
+discounted_subtotal_cents(cart: Cart, category_percents: dict[str, int] | None = None,
+                          coupon_cents: int = 0, cap_percent: int = 50) -> int
+```
+
+Errors: `ValueError("percent must be between 0 and 100")`, `ValueError("coupon must not be negative")`,
+`ValueError("cap_percent must be between 0 and 100")`.
+
+## Examples
+
+With catalog PEN (150, "office"), BOOK (1200, "office"), MUG (800, "kitchen") and a cart of 2 BOOK and 1 MUG
+(subtotal 3200):
+
+- `stacked_discount_cents(cart, {"office": 10}, 500)` returns `740` (240 category + 500 coupon, under the cap of 1600).
+- `stacked_discount_cents(cart, {"office": 50}, 1000)` returns `1600`: 1200 + 1000 = 2200 is above the cap of
+  50 percent of 3200.
+- `stacked_discount_cents(cart, {"office": 50}, 1000, cap_percent=80)` returns `2200`.
+- `discounted_subtotal_cents(cart, {"office": 10}, 500)` returns `2460`.
+=== FILE solution shop/promotions.py ===
+from __future__ import annotations
+
+from .cart import Cart
+
+
+def _validate(category_percents: dict[str, int], coupon_cents: int, cap_percent: int) -> None:
+    for percent in category_percents.values():
+        if percent < 0 or percent > 100:
+            raise ValueError("percent must be between 0 and 100")
+    if coupon_cents < 0:
+        raise ValueError("coupon must not be negative")
+    if cap_percent < 0 or cap_percent > 100:
+        raise ValueError("cap_percent must be between 0 and 100")
+
+
+def stacked_discount_cents(
+    cart: Cart,
+    category_percents: dict[str, int] | None = None,
+    coupon_cents: int = 0,
+    cap_percent: int = 50,
+) -> int:
+    """Category percentage discounts, then a flat coupon, limited to cap_percent of the subtotal."""
+    category_percents = category_percents or {}
+    _validate(category_percents, coupon_cents, cap_percent)
+    subtotal = cart.subtotal_cents()
+    category_discount = sum(
+        product.price_cents * qty * category_percents.get(product.category, 0) // 100
+        for product, qty in cart.lines()
+    )
+    coupon = min(coupon_cents, subtotal - category_discount)
+    return min(category_discount + coupon, subtotal * cap_percent // 100)
+
+
+def discounted_subtotal_cents(
+    cart: Cart,
+    category_percents: dict[str, int] | None = None,
+    coupon_cents: int = 0,
+    cap_percent: int = 50,
+) -> int:
+    discount = stacked_discount_cents(cart, category_percents, coupon_cents, cap_percent)
+    return cart.subtotal_cents() - discount
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+from .promotions import discounted_subtotal_cents, stacked_discount_cents
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "checkout",
+    "format_money",
+    "tax_cents",
+    "stacked_discount_cents",
+    "discounted_subtotal_cents",
+]
+=== FILE test tests/test_tf_rule_stacking_03.py ===
+import pytest
+
+from shop import discounted_subtotal_cents, stacked_discount_cents
+
+
+@pytest.fixture
+def full_cart(cart):
+    cart.add("BOOK", 2)
+    cart.add("MUG", 1)
+    return cart  # subtotal 3200
+
+
+def test_both_promotions_apply_under_cap(full_cart):
+    assert stacked_discount_cents(full_cart, {"office": 10}, 500) == 740
+
+
+def test_cap_limits_combined_discount(full_cart):
+    assert stacked_discount_cents(full_cart, {"office": 50}, 1000) == 1600
+    assert stacked_discount_cents(full_cart, {"office": 50}, 1000, cap_percent=80) == 2200
+
+
+def test_only_category_discount(full_cart):
+    assert stacked_discount_cents(full_cart, {"kitchen": 25}) == 200
+    assert stacked_discount_cents(full_cart, {"kitchen": 25}, 0) == 200
+
+
+def test_only_coupon(full_cart):
+    assert stacked_discount_cents(full_cart, None, 300) == 300
+    assert stacked_discount_cents(full_cart, {}, 300) == 300
+
+
+def test_coupon_applies_after_category_discount(cart):
+    cart.add("BOOK")  # 1200
+    # category first: 600 off, then coupon 400 -> 1000 (coupon-first would give 800)
+    assert stacked_discount_cents(cart, {"office": 50}, 400, cap_percent=100) == 1000
+
+
+def test_coupon_cannot_exceed_remaining_amount(cart):
+    cart.add("PEN")  # 150
+    assert stacked_discount_cents(cart, {"office": 100}, 500, cap_percent=100) == 150
+    assert stacked_discount_cents(cart, None, 1000, cap_percent=100) == 150
+
+
+def test_floor_division_for_line_discount_and_cap(cart):
+    cart.add("PEN")  # 150
+    assert stacked_discount_cents(cart, {"office": 15}) == 22
+    assert stacked_discount_cents(cart, None, 1000, cap_percent=33) == 49
+
+
+def test_line_discount_uses_quantity_and_ignores_unknown_categories(cart):
+    cart.add("PEN", 3)  # 450
+    cart.add("MUG")  # 800
+    assert stacked_discount_cents(cart, {"office": 10, "garden": 90}) == 45
+
+
+def test_empty_cart_and_zero_cap(cart, full_cart):
+    assert stacked_discount_cents(cart.__class__(cart.catalog), {"office": 10}, 500) == 0
+    assert stacked_discount_cents(full_cart, {"office": 10}, 500, cap_percent=0) == 0
+
+
+def test_discounted_subtotal(full_cart):
+    assert discounted_subtotal_cents(full_cart, {"office": 10}, 500) == 2460
+    assert discounted_subtotal_cents(full_cart) == 3200
+    assert full_cart.subtotal_cents() == 3200
+
+
+def test_validation_errors(cart, full_cart):
+    with pytest.raises(ValueError, match="percent must be between 0 and 100"):
+        stacked_discount_cents(full_cart, {"office": 101})
+    with pytest.raises(ValueError, match="percent must be between 0 and 100"):
+        stacked_discount_cents(full_cart, {"office": -1})
+    with pytest.raises(ValueError, match="coupon must not be negative"):
+        stacked_discount_cents(full_cart, None, -5)
+    with pytest.raises(ValueError, match="cap_percent must be between 0 and 100"):
+        stacked_discount_cents(full_cart, None, 0, cap_percent=101)
+    with pytest.raises(ValueError, match="cap_percent must be between 0 and 100"):
+        stacked_discount_cents(full_cart, None, 0, cap_percent=-1)
+    empty = cart.__class__(cart.catalog)
+    with pytest.raises(ValueError, match="coupon must not be negative"):
+        stacked_discount_cents(empty, None, -1)
+=== END ===

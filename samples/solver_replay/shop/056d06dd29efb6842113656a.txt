@@ -1,0 +1,80 @@
+=== FILE solution shop/promotions.py ===
+from __future__ import annotations
+
+from .cart import Cart
+
+
+def _validate(category_percents, coupon_cents: int, cap_percent: int) -> None:
+    if category_percents:
+        for percent in category_percents.values():
+            if percent < 0 or percent > 100:
+                raise ValueError("percent must be between 0 and 100")
+    if coupon_cents < 0:
+        raise ValueError("coupon must not be negative")
+    if cap_percent < 0 or cap_percent > 100:
+        raise ValueError("cap_percent must be between 0 and 100")
+
+
+def stacked_discount_cents(
+    cart: Cart,
+    category_percents: dict[str, int] | None = None,
+    coupon_cents: int = 0,
+    cap_percent: int = 50,
+) -> int:
+    """Combined category-percentage and flat-coupon discount, capped, in cents."""
+    _validate(category_percents, coupon_cents, cap_percent)
+
+    if cart.is_empty():
+        return 0
+
+    subtotal = cart.subtotal_cents()
+
+    category_discount = 0
+    if category_percents:
+        for product, qty in cart.lines():
+            if product.category in category_percents:
+                percent = category_percents[product.category]
+                category_discount += product.price_cents * qty * percent // 100
+
+    applied_coupon = min(coupon_cents, subtotal - category_discount)
+    if applied_coupon < 0:
+        applied_coupon = 0
+
+    total = category_discount + applied_coupon
+    cap = subtotal * cap_percent // 100
+    if total > cap:
+        return cap
+    return total
+
+
+def discounted_subtotal_cents(
+    cart: Cart,
+    category_percents: dict[str, int] | None = None,
+    coupon_cents: int = 0,
+    cap_percent: int = 50,
+) -> int:
+    """Cart subtotal minus the stacked discount, in cents."""
+    discount = stacked_discount_cents(cart, category_percents, coupon_cents, cap_percent)
+    return cart.subtotal_cents() - discount
+=== END ===
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+from .promotions import discounted_subtotal_cents, stacked_discount_cents
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "checkout",
+    "format_money",
+    "tax_cents",
+    "stacked_discount_cents",
+    "discounted_subtotal_cents",
+]
+=== END ===

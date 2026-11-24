@@ -1,0 +1,96 @@
+{
+  "task_id": "shop__tiered_rates_x_rule_stacking__05",
+  "accepted": true,
+  "seconds": 15.47,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 0.72
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 1.07,
+        "tail": "Error while importing test module '<repo>\\tests\\test_tf_tiered_rates_x_rule_stacking_05.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_tiered_rates_x_rule_stacking_05.py:3: in <module>\n    from shop import Order, checkout, shipping_cents\nE   ImportError: cannot import name 'shipping_cents' from 'shop' (<repo>\\shop\\__init__.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_tiered_rates_x_rule_stacking_05.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.18s\n",
+        "failing_tests": [
+          "tests/test_tf_tiered_rates_x_rule_stacking_05.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.99
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.78
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.73
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 27
+        },
+        "seconds": 0.76
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 12 of 12 broken versions (100%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 12,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 32,
+        "required": 0.6
+      }
+    }
+  ]
+}

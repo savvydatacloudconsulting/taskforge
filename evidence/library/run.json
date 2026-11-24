@@ -1,0 +1,21 @@
+{
+  "repo": "library",
+  "language": "python",
+  "base_commit": "55a3fafe5b933f800a5dbf32f0a37b50b3a375b5",
+  "seed": 2,
+  "generator": "taskforge 0.1.0",
+  "seconds": 117.5,
+  "requested": 6,
+  "accepted": 6,
+  "rejected": 0,
+  "pending": 0,
+  "mean_attempts": 1.17,
+  "variation_score": 0.786,
+  "ai": {
+    "backend": "replay",
+    "calls": 0,
+    "chars_in": 0,
+    "chars_out": 0,
+    "cache_hits": 7
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "task_id": "shop__tiered_rates_x_rule_stacking__05",
+  "status": "accepted",
+  "title": "Tiered shipping fees with member discount and express surcharge, capped",
+  "recipes": [
+    "tiered_rates",
+    "rule_stacking"
+  ],
+  "reason": "",
+  "nearest_task": "shop__rounding_policy_x_validation_rejection__04",
+  "nearest_distance": 0.6977,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 20.872263200000816
+    }
+  ]
+}

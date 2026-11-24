@@ -1,0 +1,101 @@
+{
+  "task_id": "control__bad_weak_tests",
+  "accepted": false,
+  "seconds": 10.72,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 1.1
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 1
+        },
+        "seconds": 0.99,
+        "tail": "F                                                                        [100%]\n================================== FAILURES ===================================\n_____________________________ test_limit_constant _____________________________\n\n    def test_limit_constant():\n>       assert cart_module.MAX_PER_LINE == 10\n               ^^^^^^^^^^^^^^^^^^^^^^^^\nE       AttributeError: module 'shop.cart' has no attribute 'MAX_PER_LINE'\n\ntests\\test_tf_limit.py:5: AttributeError\n=========================== short test summary info ===========================\nFAILED tests/test_tf_limit.py::test_limit_constant - AttributeError: module '...\n1 failed in 0.10s\n",
+        "failing_tests": [
+          "tests/test_tf_limit.py::test_limit_constant"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (1 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 1
+            },
+            "seconds": 1.02
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 1
+            },
+            "seconds": 1.08
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 1
+            },
+            "seconds": 1.11
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 16
+        },
+        "seconds": 1.08
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "fail",
+      "detail": "tests caught only 1 of 5 broken versions (20%, need 60%)",
+      "evidence": {
+        "mutants": 5,
+        "killed": 1,
+        "survived": [
+          "shop/cart.py: line 20: negated if condition",
+          "shop/cart.py: line 19: arithmetic Add -> Sub",
+          "shop/cart.py: line 19: constant 0 -> 1",
+          "shop/cart.py: line 20: comparison Gt -> GtE"
+        ],
+        "kill_rate": 0.2,
+        "available_sites": 5,
+        "required": 0.6
+      }
+    }
+  ]
+}

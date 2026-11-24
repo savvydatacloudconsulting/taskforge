@@ -1,0 +1,102 @@
+{
+  "task_id": "shop__validation_rejection__08",
+  "accepted": true,
+  "seconds": 10.77,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (15 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 15
+      },
+      "seconds": 0.72
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (7 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 7
+        },
+        "seconds": 0.85,
+        "tail": "SE ValueError\n\ntests\\test_tf_validation_rejection_08.py:76: Failed\n=========================== short test summary info ===========================\nFAILED tests/test_tf_validation_rejection_08.py::test_non_string_order_id_rejected\nFAILED tests/test_tf_validation_rejection_08.py::test_empty_and_blank_order_id_rejected\nFAILED tests/test_tf_validation_rejection_08.py::test_whitespace_inside_order_id_rejected\nFAILED tests/test_tf_validation_rejection_08.py::test_length_boundary - Faile...\nFAILED tests/test_tf_validation_rejection_08.py::test_check_order_type_before_empty_before_whitespace_before_length\nFAILED tests/test_tf_validation_rejection_08.py::test_order_id_error_wins_over_empty_cart\nFAILED tests/test_tf_validation_rejection_08.py::test_valid_order_id_behaves_as_before\n7 failed in 0.09s\n",
+        "failing_tests": [
+          "tests/test_tf_validation_rejection_08.py::test_check_order_type_before_empty_before_whitespace_before_length",
+          "tests/test_tf_validation_rejection_08.py::test_empty_and_blank_order_id_rejected",
+          "tests/test_tf_validation_rejection_08.py::test_length_boundary",
+          "tests/test_tf_validation_rejection_08.py::test_non_string_order_id_rejected",
+          "tests/test_tf_validation_rejection_08.py::test_order_id_error_wins_over_empty_cart",
+          "tests/test_tf_validation_rejection_08.py::test_valid_order_id_behaves_as_before",
+          "tests/test_tf_validation_rejection_08.py::test_whitespace_inside_order_id_rejected"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (7 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 7
+            },
+            "seconds": 0.92
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 7
+            },
+            "seconds": 0.87
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 7
+            },
+            "seconds": 0.75
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 15 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 22
+        },
+        "seconds": 0.68
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 8 of 8 broken versions (100%)",
+      "evidence": {
+        "mutants": 8,
+        "killed": 8,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 8,
+        "required": 0.6
+      }
+    }
+  ]
+}

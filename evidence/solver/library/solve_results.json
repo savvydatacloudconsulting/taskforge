@@ -1,0 +1,181 @@
+{
+  "generator": "taskforge 0.1.0",
+  "solver": "independent AI agent (sees instruction only)",
+  "repo": "library",
+  "base_commit": "55a3fafe5b933f800a5dbf32f0a37b50b3a375b5",
+  "attempts_allowed": 1,
+  "seconds": 14.7,
+  "pending": 0,
+  "ai": {
+    "backend": "manual",
+    "calls": 0,
+    "cache_hits": 6,
+    "pending": 0,
+    "chars_in": 0,
+    "chars_out": 0
+  },
+  "results": [
+    {
+      "task_id": "library__audit_trail_x_quantity_limit__06",
+      "recipes": [
+        "audit_trail",
+        "quantity_limit"
+      ],
+      "solved": true,
+      "first_try": true,
+      "detail": "all hidden tests and the existing suite pass",
+      "failing_tests": [],
+      "files_changed": 2,
+      "attempts": [
+        {
+          "number": 1,
+          "outcome": "solved",
+          "detail": "ok",
+          "seconds": 1.989972299998044
+        }
+      ]
+    },
+    {
+      "task_id": "library__rounding_policy__04",
+      "recipes": [
+        "rounding_policy"
+      ],
+      "solved": true,
+      "first_try": true,
+      "detail": "all hidden tests and the existing suite pass",
+      "failing_tests": [],
+      "files_changed": 2,
+      "attempts": [
+        {
+          "number": 1,
+          "outcome": "solved",
+          "detail": "ok",
+          "seconds": 1.9902561999988393
+        }
+      ]
+    },
+    {
+      "task_id": "library__rule_stacking__05",
+      "recipes": [
+        "rule_stacking"
+      ],
+      "solved": true,
+      "first_try": true,
+      "detail": "all hidden tests and the existing suite pass",
+      "failing_tests": [],
+      "files_changed": 2,
+      "attempts": [
+        {
+          "number": 1,
+          "outcome": "solved",
+          "detail": "ok",
+          "seconds": 3.3841949999987264
+        }
+      ]
+    },
+    {
+      "task_id": "library__tiered_rates__03",
+      "recipes": [
+        "tiered_rates"
+      ],
+      "solved": true,
+      "first_try": true,
+      "detail": "all hidden tests and the existing suite pass",
+      "failing_tests": [],
+      "files_changed": 2,
+      "attempts": [
+        {
+          "number": 1,
+          "outcome": "solved",
+          "detail": "ok",
+          "seconds": 2.194650099998398
+        }
+      ]
+    },
+    {
+      "task_id": "library__time_window__01",
+      "recipes": [
+        "time_window"
+      ],
+      "solved": true,
+      "first_try": true,
+      "detail": "all hidden tests and the existing suite pass",
+      "failing_tests": [],
+      "files_changed": 1,
+      "attempts": [
+        {
+          "number": 1,
+          "outcome": "solved",
+          "detail": "ok",
+          "seconds": 2.689771000001201
+        }
+      ]
+    },
+    {
+      "task_id": "library__validation_rejection_x_time_window__02",
+      "recipes": [
+        "validation_rejection",
+        "time_window"
+      ],
+      "solved": true,
+      "first_try": true,
+      "detail": "all hidden tests and the existing suite pass",
+      "failing_tests": [],
+      "files_changed": 2,
+      "attempts": [
+        {
+          "number": 1,
+          "outcome": "solved",
+          "detail": "ok",
+          "seconds": 2.2227233000012347
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "tasks": 6,
+    "solved": 6,
+    "solved_first_try": 6,
+    "solve_rate": 1.0,
+    "first_try_rate": 1.0,
+    "single_recipe": {
+      "tasks": 4,
+      "rate": 1.0
+    },
+    "combined_recipes": {
+      "tasks": 2,
+      "rate": 1.0
+    },
+    "by_recipe": {
+      "audit_trail": {
+        "tasks": 1,
+        "solved": 1
+      },
+      "quantity_limit": {
+        "tasks": 1,
+        "solved": 1
+      },
+      "rounding_policy": {
+        "tasks": 1,
+        "solved": 1
+      },
+      "rule_stacking": {
+        "tasks": 1,
+        "solved": 1
+      },
+      "tiered_rates": {
+        "tasks": 1,
+        "solved": 1
+      },
+      "time_window": {
+        "tasks": 2,
+        "solved": 2
+      },
+      "validation_rejection": {
+        "tasks": 1,
+        "solved": 1
+      }
+    },
+    "failure_kinds": {}
+  }
+}

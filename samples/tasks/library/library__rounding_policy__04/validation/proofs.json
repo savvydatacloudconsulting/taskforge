@@ -1,0 +1,96 @@
+{
+  "task_id": "library__rounding_policy__04",
+  "accepted": true,
+  "seconds": 16.89,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (9 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 9
+      },
+      "seconds": 0.88
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (1 failing)",
+      "evidence": {
+        "returncode": 2,
+        "timed_out": false,
+        "counts": {
+          "ERROR": 1
+        },
+        "seconds": 1.06,
+        "tail": "_________\nImportError while importing test module '<repo>\\tests\\test_tf_rounding_policy_04.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\nC:\\Python314\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntests\\test_tf_rounding_policy_04.py:5: in <module>\n    from library import FINE_ROUND_UNIT_CENTS, discounted_fine\nE   ImportError: cannot import name 'FINE_ROUND_UNIT_CENTS' from 'library' (<repo>\\library\\__init__.py)\n=========================== short test summary info ===========================\nERROR tests/test_tf_rounding_policy_04.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!\n1 error in 0.24s\n",
+        "failing_tests": [
+          "tests/test_tf_rounding_policy_04.py"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (18 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 18
+            },
+            "seconds": 0.97
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 18
+            },
+            "seconds": 1.18
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 18
+            },
+            "seconds": 1.26
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 9 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 27
+        },
+        "seconds": 1.7
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 12 of 12 broken versions (100%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 12,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 34,
+        "required": 0.6
+      }
+    }
+  ]
+}

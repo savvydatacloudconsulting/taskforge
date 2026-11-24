@@ -1,0 +1,405 @@
+{
+  "generator": "taskforge 0.1.0",
+  "run": {
+    "repo": "shop",
+    "language": "python",
+    "base_commit": "edb821f4489b12ec52b8f1e33bd2bc7319b7cf9f",
+    "seed": 1,
+    "generator": "taskforge 0.1.0",
+    "seconds": 166.4,
+    "requested": 8,
+    "accepted": 8,
+    "rejected": 0,
+    "pending": 0,
+    "mean_attempts": 1.0,
+    "variation_score": 0.808,
+    "ai": {
+      "backend": "replay",
+      "calls": 0,
+      "chars_in": 0,
+      "chars_out": 0,
+      "cache_hits": 8
+    }
+  },
+  "records": [
+    {
+      "id": "shop__audit_trail__06",
+      "status": "accepted",
+      "title": "Cart audit trail of add, remove and clear events",
+      "recipes": [
+        "audit_trail"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (11 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 10 of 12 broken versions (83%)"
+      },
+      "kill_rate": 0.833,
+      "mutants": 12,
+      "nearest_task": "shop__dedup_merge__02",
+      "nearest_distance": 0.796,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 20.086829300000318
+        }
+      ]
+    },
+    {
+      "id": "shop__dedup_merge__02",
+      "status": "accepted",
+      "title": "Bulk add with duplicate handling for Catalog and Cart",
+      "recipes": [
+        "dedup_merge"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (13 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (13 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 12 of 12 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 12,
+      "nearest_task": "shop__time_window__01",
+      "nearest_distance": 0.8501,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 19.983654399999068
+        }
+      ]
+    },
+    {
+      "id": "shop__quantity_limit_x_rounding_policy__07",
+      "status": "accepted",
+      "title": "Per-item quantity cap on carts with half-even per-unit tax at checkout",
+      "recipes": [
+        "quantity_limit",
+        "rounding_policy"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (15 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 11 of 12 broken versions (92%)"
+      },
+      "kill_rate": 0.917,
+      "mutants": 12,
+      "nearest_task": "shop__rounding_policy_x_validation_rejection__04",
+      "nearest_distance": 0.6369,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 22.87684310000077
+        }
+      ]
+    },
+    {
+      "id": "shop__rounding_policy_x_validation_rejection__04",
+      "status": "accepted",
+      "title": "Selectable tax rounding modes with per-line tax and strict validation at checkout",
+      "recipes": [
+        "rounding_policy",
+        "validation_rejection"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (37 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 10 of 12 broken versions (83%)"
+      },
+      "kill_rate": 0.833,
+      "mutants": 12,
+      "nearest_task": "shop__time_window__01",
+      "nearest_distance": 0.7777,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 21.251262699999643
+        }
+      ]
+    },
+    {
+      "id": "shop__rule_stacking__03",
+      "status": "accepted",
+      "title": "Stack category discounts with a flat coupon under a percentage cap",
+      "recipes": [
+        "rule_stacking"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (11 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 11 of 12 broken versions (92%)"
+      },
+      "kill_rate": 0.917,
+      "mutants": 12,
+      "nearest_task": "shop__time_window__01",
+      "nearest_distance": 0.6744,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 21.517853600000308
+        }
+      ]
+    },
+    {
+      "id": "shop__tiered_rates_x_rule_stacking__05",
+      "status": "accepted",
+      "title": "Tiered shipping fees with member discount and express surcharge, capped",
+      "recipes": [
+        "tiered_rates",
+        "rule_stacking"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 12 of 12 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 12,
+      "nearest_task": "shop__rounding_policy_x_validation_rejection__04",
+      "nearest_distance": 0.6977,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 20.872263200000816
+        }
+      ]
+    },
+    {
+      "id": "shop__time_window__01",
+      "status": "accepted",
+      "title": "Time-windowed promotion applied at checkout",
+      "recipes": [
+        "time_window"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (1 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (10 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 10 of 12 broken versions (83%)"
+      },
+      "kill_rate": 0.833,
+      "mutants": 12,
+      "nearest_task": null,
+      "nearest_distance": 1.0,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 19.97304570000051
+        }
+      ]
+    },
+    {
+      "id": "shop__validation_rejection__08",
+      "status": "accepted",
+      "title": "Validate order identifiers in checkout",
+      "recipes": [
+        "validation_rejection"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (7 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (7 tests)",
+        "nothing_breaks": "the full suite passes; all 15 original tests still pass",
+        "tests_have_teeth": "tests caught 8 of 8 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 8,
+      "nearest_task": "shop__rounding_policy_x_validation_rejection__04",
+      "nearest_distance": 0.7764,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 17.10233630000039
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "accepted": 8,
+    "rejected": 0,
+    "acceptance_rate": 1.0,
+    "mean_attempts": 1.0,
+    "mean_kill_rate": 0.917,
+    "variation_score": 0.808
+  },
+  "variation": {
+    "ids": [
+      "shop__audit_trail__06",
+      "shop__dedup_merge__02",
+      "shop__quantity_limit_x_rounding_policy__07",
+      "shop__rounding_policy_x_validation_rejection__04",
+      "shop__rule_stacking__03",
+      "shop__tiered_rates_x_rule_stacking__05",
+      "shop__time_window__01",
+      "shop__validation_rejection__08"
+    ],
+    "matrix": [
+      [
+        0.0,
+        0.796,
+        0.8068,
+        0.8824,
+        0.845,
+        0.875,
+        0.8039,
+        0.9071
+      ],
+      [
+        0.796,
+        0.0,
+        0.8096,
+        0.8727,
+        0.848,
+        0.8705,
+        0.8501,
+        0.8922
+      ],
+      [
+        0.8068,
+        0.8096,
+        0.0,
+        0.6369,
+        0.8089,
+        0.7317,
+        0.7503,
+        0.8727
+      ],
+      [
+        0.8824,
+        0.8727,
+        0.6369,
+        0.0,
+        0.8276,
+        0.6977,
+        0.7777,
+        0.7764
+      ],
+      [
+        0.845,
+        0.848,
+        0.8089,
+        0.8276,
+        0.0,
+        0.7199,
+        0.6744,
+        0.8878
+      ],
+      [
+        0.875,
+        0.8705,
+        0.7317,
+        0.6977,
+        0.7199,
+        0.0,
+        0.7133,
+        0.8577
+      ],
+      [
+        0.8039,
+        0.8501,
+        0.7503,
+        0.7777,
+        0.6744,
+        0.7133,
+        0.0,
+        0.8283
+      ],
+      [
+        0.9071,
+        0.8922,
+        0.8727,
+        0.7764,
+        0.8878,
+        0.8577,
+        0.8283,
+        0.0
+      ]
+    ],
+    "min_distance": 0.25
+  }
+}

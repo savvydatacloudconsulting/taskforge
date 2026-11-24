@@ -1,0 +1,110 @@
+{
+  "task_id": "library__validation_rejection_x_time_window__02",
+  "accepted": true,
+  "seconds": 14.98,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (9 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 9
+      },
+      "seconds": 0.88
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (15 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 15
+        },
+        "seconds": 1.03,
+        "tail": "est_today_type_check_precedes_lookups\nFAILED tests/test_tf_validation_rejection_x_time_window_02.py::test_lend_before_window_start_is_rejected\nFAILED tests/test_tf_validation_rejection_x_time_window_02.py::test_lend_window_bounds_are_inclusive\nFAILED tests/test_tf_validation_rejection_x_time_window_02.py::test_open_ended_bounds\nFAILED tests/test_tf_validation_rejection_x_time_window_02.py::test_due_date_is_capped_by_valid_until\nFAILED tests/test_tf_validation_rejection_x_time_window_02.py::test_due_date_not_capped_when_membership_outlasts_loan\nFAILED tests/test_tf_validation_rejection_x_time_window_02.py::test_fine_uses_capped_due_date_and_return_works_after_expiry\nFAILED tests/test_tf_validation_rejection_x_time_window_02.py::test_window_check_precedes_already_borrowed\n15 failed in 0.18s\n",
+        "failing_tests": [
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_add_member_rejects_non_date_bounds",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_add_member_rejects_reversed_window_and_does_not_register",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_due_date_is_capped_by_valid_until",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_due_date_not_capped_when_membership_outlasts_loan",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_fine_uses_capped_due_date_and_return_works_after_expiry",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_lend_before_window_start_is_rejected",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_lend_rejects_non_date_today",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_lend_window_bounds_are_inclusive",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_member_window_fields_default_to_none",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_open_ended_bounds",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_single_day_window_is_valid",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_today_type_check_precedes_lookups",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_valid_from_is_checked_before_valid_until",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_validation_runs_before_duplicate_check",
+          "tests/test_tf_validation_rejection_x_time_window_02.py::test_window_check_precedes_already_borrowed"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (15 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 15
+            },
+            "seconds": 1.03
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 15
+            },
+            "seconds": 0.87
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 15
+            },
+            "seconds": 0.87
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 9 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 24
+        },
+        "seconds": 0.87
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 12 of 12 broken versions (100%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 12,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 28,
+        "required": 0.6
+      }
+    }
+  ]
+}

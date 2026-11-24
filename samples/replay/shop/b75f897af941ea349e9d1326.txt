@@ -1,0 +1,341 @@
+=== TITLE ===
+Per-item quantity cap on carts with half-even per-unit tax at checkout
+=== INSTRUCTION ===
+## Background
+
+The shop library lets a `Cart` hold any quantity of any product, and `checkout` computes tax once on the whole subtotal, rounding half up. The business now wants two related changes:
+
+* A cart can be configured with a hard cap on how many units of a single SKU it may hold.
+* Checkout can optionally compute tax per unit using banker's rounding (round half to even), then multiply by the quantity of each line. Because the cap limits how many units of a SKU a cart holds, only quantities that were actually accepted into the cart contribute to the per-unit tax.
+
+Existing behaviour (no cap, tax on the subtotal rounded half up) must remain the default.
+
+## Requirements
+
+1. `Cart` accepts an optional `max_per_sku` argument (default `None`, meaning no cap). If it is given and is not a positive integer (zero or negative), the constructor raises `ValueError`.
+2. The cap applies per SKU, to the total quantity of that SKU in the cart (existing quantity plus the quantity being added). Different SKUs have independent caps of the same size.
+3. `Cart.add(sku, quantity)` raises `QuantityLimitError` when the resulting quantity of that SKU would exceed `max_per_sku`. A resulting quantity exactly equal to the cap is allowed.
+4. A rejected `add` leaves the cart completely unchanged (no partial add: if 1 unit is in the cart, the cap is 2 and `add(sku, 2)` is attempted, the cart still holds exactly 1 unit).
+5. `QuantityLimitError` is a subclass of `ValueError`. Its message is exactly `limit of <max_per_sku> per item exceeded for <sku>`.
+6. Existing validation keeps priority over the cap: a non-positive quantity raises a plain `ValueError` (not `QuantityLimitError`), and an unknown SKU raises `KeyError`, even when the requested quantity would also exceed the cap.
+7. `Cart.remaining(sku)` returns how many more units of `sku` can be added: `max_per_sku - quantity(sku)` when a cap is set, or `None` when no cap is set.
+8. A new function `tax_cents_half_even(amount_cents, rate_percent=TAX_RATE_PERCENT)` in `shop.pricing` returns the tax on a non-negative amount, rounded to the nearest cent, with exact halves rounded to the nearest EVEN number of cents (for example 0.5 cents becomes 0, 1.5 becomes 2, 2.5 becomes 2, 3.5 becomes 4). The existing `tax_cents` is unchanged (half up).
+9. `checkout(cart, order_id, per_unit_tax=False)` accepts a new keyword argument. When `False` (default) behaviour is exactly as before. When `True`, the order's `tax_cents` is the sum over cart lines of `tax_cents_half_even(unit_price_cents) * quantity`, `total_cents` is `subtotal_cents + tax_cents`, and `subtotal_cents` and `lines` are unchanged. The cart is emptied afterwards in both modes, and an empty cart still raises `ValueError("cart is empty")`.
+10. `QuantityLimitError` and `tax_cents_half_even` are importable from the top-level `shop` package as well as from their modules.
+
+## Public interface
+
+* `shop.cart.QuantityLimitError(ValueError)` (also `shop.QuantityLimitError`).
+* `shop.cart.Cart(catalog, max_per_sku=None)`; `Cart.add(sku, quantity=1)`; `Cart.remaining(sku) -> int | None`.
+* `shop.pricing.tax_cents_half_even(amount_cents, rate_percent=TAX_RATE_PERCENT) -> int` (also `shop.tax_cents_half_even`).
+* `shop.checkout.checkout(cart, order_id, per_unit_tax=False) -> Order`.
+* Error message for a rejected add: `limit of 2 per item exceeded for PEN` (for a cap of 2 and SKU `PEN`).
+
+## Examples
+
+```python
+from shop import Cart, Catalog, Product, QuantityLimitError, checkout, tax_cents_half_even
+
+catalog = Catalog([Product("B", "Bolt", 25)])
+cart = Cart(catalog, max_per_sku=2)
+cart.add("B", 2)
+cart.remaining("B")          # 0
+cart.add("B")                # raises QuantityLimitError("limit of 2 per item exceeded for B")
+
+tax_cents_half_even(25)      # 2   (2.5 cents rounds to the even value 2)
+tax_cents_half_even(35)      # 4   (3.5 cents rounds to the even value 4)
+tax_cents_half_even(5)       # 0   (0.5 cents rounds to 0)
+
+order = checkout(cart, "o1", per_unit_tax=True)
+order.subtotal_cents         # 50
+order.tax_cents              # 4   (2 units * 2 cents), whereas the default mode gives 5
+order.total_cents            # 54
+```
+=== FILE solution shop/pricing.py ===
+from __future__ import annotations
+
+TAX_RATE_PERCENT = 10
+
+
+def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on an amount, rounded half up to the nearest cent."""
+    return (amount_cents * rate_percent + 50) // 100
+
+
+def tax_cents_half_even(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on a non-negative amount, rounded to the nearest cent; exact halves go to the even cent."""
+    whole, remainder = divmod(amount_cents * rate_percent, 100)
+    if remainder > 50 or (remainder == 50 and whole % 2 == 1):
+        whole += 1
+    return whole
+
+
+def format_money(cents: int) -> str:
+    sign = "-" if cents < 0 else ""
+    cents = abs(cents)
+    return f"{sign}${cents // 100}.{cents % 100:02d}"
+=== FILE solution shop/cart.py ===
+from __future__ import annotations
+
+from .catalog import Catalog, Product
+
+
+class QuantityLimitError(ValueError):
+    """Raised when adding to the cart would exceed the per-SKU quantity cap."""
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog, max_per_sku: int | None = None):
+        if max_per_sku is not None and max_per_sku <= 0:
+            raise ValueError("max_per_sku must be positive")
+        self.catalog = catalog
+        self.max_per_sku = max_per_sku
+        self._lines: dict[str, int] = {}
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        self.catalog.get(sku)  # raises KeyError for unknown products
+        new_quantity = self._lines.get(sku, 0) + quantity
+        if self.max_per_sku is not None and new_quantity > self.max_per_sku:
+            raise QuantityLimitError(
+                f"limit of {self.max_per_sku} per item exceeded for {sku}"
+            )
+        self._lines[sku] = new_quantity
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        if sku not in self._lines:
+            raise KeyError(f"not in cart: {sku}")
+        if quantity is None or quantity >= self._lines[sku]:
+            del self._lines[sku]
+        else:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self._lines[sku] -= quantity
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def remaining(self, sku: str) -> int | None:
+        """How many more units of sku fit under the cap, or None when uncapped."""
+        if self.max_per_sku is None:
+            return None
+        return self.max_per_sku - self.quantity(sku)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        self._lines.clear()
+=== FILE solution shop/checkout.py ===
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import tax_cents, tax_cents_half_even
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+
+
+def checkout(cart: Cart, order_id: str, per_unit_tax: bool = False) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards.
+
+    By default tax is computed on the subtotal (half up). With per_unit_tax=True
+    it is computed per unit (half even) and multiplied by each line's quantity.
+    """
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    if per_unit_tax:
+        tax = sum(tax_cents_half_even(price) * qty for _, qty, price in lines)
+    else:
+        tax = tax_cents(subtotal)
+    order = Order(order_id, lines, subtotal, tax, subtotal + tax)
+    cart.clear()
+    return order
+=== FILE solution shop/__init__.py ===
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart, QuantityLimitError
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents, tax_cents_half_even
+
+__all__ = [
+    "Cart",
+    "Catalog",
+    "Product",
+    "Order",
+    "QuantityLimitError",
+    "checkout",
+    "format_money",
+    "tax_cents",
+    "tax_cents_half_even",
+]
+=== FILE test tests/test_tf_quantity_limit_x_rounding_policy_07.py ===
+import pytest
+
+from shop import (
+    Cart,
+    Catalog,
+    Product,
+    QuantityLimitError,
+    checkout,
+    tax_cents,
+    tax_cents_half_even,
+)
+
+
+@pytest.fixture
+def small_catalog():
+    return Catalog([
+        Product("A", "Tiny", 5),
+        Product("B", "Bolt", 25),
+        Product("C", "Clip", 15),
+        Product("D", "Dowel", 35),
+    ])
+
+
+def test_half_even_rounding_values():
+    assert tax_cents_half_even(0) == 0
+    assert tax_cents_half_even(5) == 0    # 0.5 -> 0
+    assert tax_cents_half_even(15) == 2   # 1.5 -> 2
+    assert tax_cents_half_even(25) == 2   # 2.5 -> 2
+    assert tax_cents_half_even(35) == 4   # 3.5 -> 4
+    assert tax_cents_half_even(45) == 4   # 4.5 -> 4
+    assert tax_cents_half_even(150) == 15
+    assert tax_cents_half_even(16) == 2   # 1.6 -> 2
+    assert tax_cents_half_even(14) == 1   # 1.4 -> 1
+
+
+def test_half_even_custom_rate_and_half_up_unchanged():
+    assert tax_cents_half_even(50, 5) == 2   # 2.5 -> 2
+    assert tax_cents_half_even(70, 5) == 4   # 3.5 -> 4
+    assert tax_cents(25) == 3                # existing half-up policy
+
+
+def test_cap_rejects_exceeding_add_with_exact_message(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    cart.add("B", 2)
+    with pytest.raises(QuantityLimitError) as info:
+        cart.add("B")
+    assert str(info.value) == "limit of 2 per item exceeded for B"
+    assert isinstance(info.value, ValueError)
+    assert cart.quantity("B") == 2
+
+
+def test_rejected_add_is_not_partial(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    cart.add("C", 1)
+    with pytest.raises(QuantityLimitError):
+        cart.add("C", 2)
+    assert cart.quantity("C") == 1
+    assert cart.subtotal_cents() == 15
+
+
+def test_cap_is_per_sku_and_allows_exact_cap(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    cart.add("A", 2)
+    cart.add("B", 1)
+    cart.add("B", 1)
+    assert cart.quantity("A") == 2
+    assert cart.quantity("B") == 2
+
+
+def test_no_cap_by_default(small_catalog):
+    cart = Cart(small_catalog)
+    cart.add("A", 50)
+    assert cart.quantity("A") == 50
+    assert cart.remaining("A") is None
+
+
+def test_remaining_tracks_cap(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    assert cart.remaining("A") == 2
+    cart.add("A")
+    assert cart.remaining("A") == 1
+    cart.add("A")
+    assert cart.remaining("A") == 0
+    cart.remove("A", 1)
+    assert cart.remaining("A") == 1
+
+
+@pytest.mark.parametrize("bad", [0, -1])
+def test_invalid_cap_rejected(small_catalog, bad):
+    with pytest.raises(ValueError):
+        Cart(small_catalog, max_per_sku=bad)
+
+
+def test_existing_validation_has_priority_over_cap(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    with pytest.raises(KeyError):
+        cart.add("NOPE", 5)
+    with pytest.raises(ValueError) as info:
+        cart.add("A", 0)
+    assert not isinstance(info.value, QuantityLimitError)
+
+
+def test_checkout_default_mode_unchanged(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    cart.add("B", 2)
+    order = checkout(cart, "o1")
+    assert order.subtotal_cents == 50
+    assert order.tax_cents == 5
+    assert order.total_cents == 55
+
+
+def test_checkout_per_unit_half_even(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    cart.add("B", 2)
+    order = checkout(cart, "o2", per_unit_tax=True)
+    assert order.lines == [("B", 2, 25)]
+    assert order.subtotal_cents == 50
+    assert order.tax_cents == 4
+    assert order.total_cents == 54
+    assert cart.is_empty()
+
+
+def test_per_unit_tax_differs_from_subtotal_tax_for_tiny_prices(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    cart.add("A", 2)
+    cart.add("D", 2)
+    order = checkout(cart, "o3", per_unit_tax=True)
+    assert order.subtotal_cents == 80
+    assert order.tax_cents == 0 * 2 + 4 * 2
+    assert order.total_cents == 88
+
+
+def test_per_unit_tax_uses_only_accepted_quantities(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    cart.add("C", 2)
+    with pytest.raises(QuantityLimitError):
+        cart.add("C", 1)
+    order = checkout(cart, "o4", per_unit_tax=True)
+    assert order.lines == [("C", 2, 15)]
+    assert order.subtotal_cents == 30
+    assert order.tax_cents == 4
+    assert order.total_cents == 34
+
+
+def test_checkout_empty_cart_still_rejected_in_per_unit_mode(small_catalog):
+    cart = Cart(small_catalog, max_per_sku=2)
+    with pytest.raises(ValueError, match="cart is empty"):
+        checkout(cart, "o5", per_unit_tax=True)
+=== END ===

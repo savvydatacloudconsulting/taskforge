@@ -1,0 +1,73 @@
+diff --git a/library/__init__.py b/library/__init__.py
+index a92bc96..442972d 100644
+--- a/library/__init__.py
++++ b/library/__init__.py
+@@ -1,6 +1,13 @@
+ """A tiny library-lending package used as a second demo repository for TaskForge."""
+ 
+-from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
++from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library, tiered_fine
+ from .models import Book, Member
+ 
+-__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
++__all__ = [
++    "Book",
++    "Member",
++    "Library",
++    "LOAN_DAYS",
++    "FINE_CENTS_PER_DAY",
++    "tiered_fine",
++]
+diff --git a/library/lending.py b/library/lending.py
+index db126a4..8408189 100644
+--- a/library/lending.py
++++ b/library/lending.py
+@@ -7,6 +7,24 @@ from .models import Book, Member
+ LOAN_DAYS = 14
+ FINE_CENTS_PER_DAY = 50
+ 
++# (last late day of the band, cents per late day); None means "no upper limit".
++FINE_TIERS = ((7, 50), (14, 100), (None, 200))
++
++
++def tiered_fine(late_days: int) -> int:
++    """Total fine in cents for ``late_days`` late days, charged band by band."""
++    if late_days < 0:
++        raise ValueError("late_days must be >= 0")
++    total = 0
++    lower = 0
++    for upper, rate in FINE_TIERS:
++        top = late_days if upper is None else min(late_days, upper)
++        if top > lower:
++            total += (top - lower) * rate
++        if upper is not None:
++            lower = upper
++    return total
++
+ 
+ class Library:
+     """Books, members and who has borrowed what. Dates are always passed in."""
+@@ -43,13 +61,21 @@ class Library:
+         self._loans[(isbn, member_id)] = due
+         return due
+ 
+-    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+-        """Take a book back and return the late fine in cents."""
++    def return_book(
++        self, isbn: str, member_id: str, today: date, tiered: bool = False
++    ) -> int:
++        """Take a book back and return the late fine in cents.
++
++        By default the fine is flat per late day; with ``tiered=True`` it uses
++        the escalating schedule from ``tiered_fine``.
++        """
+         key = (isbn, member_id)
+         if key not in self._loans:
+             raise KeyError("no such loan")
+         due = self._loans.pop(key)
+         late_days = max(0, (today - due).days)
++        if tiered:
++            return tiered_fine(late_days)
+         return late_days * FINE_CENTS_PER_DAY
+ 
+     def loans_of(self, member_id: str) -> list[str]:

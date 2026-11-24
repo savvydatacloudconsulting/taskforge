@@ -1,0 +1,238 @@
+=== TITLE ===
+Escalating tiered late fines for overdue returns
+=== INSTRUCTION ===
+## Background
+The library currently charges a flat `FINE_CENTS_PER_DAY` (50 cents) for every day a book is returned after its due date. To discourage long overdue loans, the library wants an optional escalating fine schedule: the longer a book is late, the more each additional late day costs. The fine is split into bands of late days, and each band is charged at its own daily rate (a marginal scheme, like income-tax brackets: a late day is charged at the rate of the band it falls in, never at the rate of a higher band).
+
+The fine schedule is:
+
+| Late days (1 = first day after the due date) | Rate per late day |
+|----------------------------------------------|-------------------|
+| 1 to 7 (inclusive)                           | 50 cents          |
+| 8 to 14 (inclusive)                          | 100 cents         |
+| 15 and above                                 | 200 cents         |
+
+A day that lies exactly on an edge belongs to the lower band: late day 7 costs 50 cents and late day 8 costs 100 cents; late day 14 costs 100 cents and late day 15 costs 200 cents.
+
+## Requirements
+1. Add a module-level function `tiered_fine(late_days)` that returns the total fine in cents for a book that is `late_days` days late, using the marginal schedule above.
+2. `tiered_fine(0)` returns `0`. A book returned on the due date or earlier is not late.
+3. Late days are charged band by band: for example 8 late days cost 7 days at 50 plus 1 day at 100.
+4. `tiered_fine` raises `ValueError` with the message `late_days must be >= 0` when `late_days` is negative.
+5. `Library.return_book` gets a new optional parameter `tiered` (default `False`). With `tiered=False` it behaves exactly as before (flat 50 cents per late day). With `tiered=True` it computes the number of late days as before (never negative) and returns `tiered_fine(late_days)`.
+6. With `tiered=True` the loan is still removed and the same errors are raised as before (for example `KeyError("no such loan")` when there is no such loan).
+7. `tiered_fine` must be importable from both `library.lending` and `library`.
+
+## Public interface
+- `library.lending.tiered_fine(late_days: int) -> int`, also exported as `library.tiered_fine` (add it to the package `__all__`).
+- `Library.return_book(self, isbn: str, member_id: str, today: date, tiered: bool = False) -> int`.
+- Error type and message for negative input: `ValueError("late_days must be >= 0")`.
+- Existing names (`LOAN_DAYS`, `FINE_CENTS_PER_DAY`, `Library`, `Book`, `Member`) are unchanged.
+
+## Examples
+```python
+from library import tiered_fine
+
+tiered_fine(0)    # 0
+tiered_fine(3)    # 150   (3 * 50)
+tiered_fine(7)    # 350   (7 * 50)
+tiered_fine(8)    # 450   (7 * 50 + 1 * 100)
+tiered_fine(14)   # 1050  (7 * 50 + 7 * 100)
+tiered_fine(15)   # 1250  (7 * 50 + 7 * 100 + 1 * 200)
+tiered_fine(20)   # 2050  (7 * 50 + 7 * 100 + 6 * 200)
+
+# lib.lend("111", "m1", date(2026, 3, 1)) is due on 2026-03-15
+lib.return_book("111", "m1", date(2026, 3, 25), tiered=True)   # 10 days late -> 550
+lib.return_book("111", "m1", date(2026, 3, 25))                # 10 days late, flat -> 500
+```
+=== FILE solution library/lending.py ===
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+
+# (last late day of the band, cents per late day); None means "no upper limit".
+FINE_TIERS = ((7, 50), (14, 100), (None, 200))
+
+
+def tiered_fine(late_days: int) -> int:
+    """Total fine in cents for ``late_days`` late days, charged band by band."""
+    if late_days < 0:
+        raise ValueError("late_days must be >= 0")
+    total = 0
+    lower = 0
+    for upper, rate in FINE_TIERS:
+        top = late_days if upper is None else min(late_days, upper)
+        if top > lower:
+            total += (top - lower) * rate
+        if upper is not None:
+            lower = upper
+    return total
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(
+        self, isbn: str, member_id: str, today: date, tiered: bool = False
+    ) -> int:
+        """Take a book back and return the late fine in cents.
+
+        By default the fine is flat per late day; with ``tiered=True`` it uses
+        the escalating schedule from ``tiered_fine``.
+        """
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        if tiered:
+            return tiered_fine(late_days)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+=== FILE solution library/__init__.py ===
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library, tiered_fine
+from .models import Book, Member
+
+__all__ = [
+    "Book",
+    "Member",
+    "Library",
+    "LOAN_DAYS",
+    "FINE_CENTS_PER_DAY",
+    "tiered_fine",
+]
+=== FILE test tests/test_tf_tiered_rates_03.py ===
+from datetime import timedelta
+
+import pytest
+
+import library
+from library import tiered_fine
+from library.lending import tiered_fine as lending_tiered_fine
+
+
+def test_exported_from_both_places():
+    assert library.tiered_fine is lending_tiered_fine
+    assert "tiered_fine" in library.__all__
+
+
+def test_zero_late_days_is_free():
+    assert tiered_fine(0) == 0
+
+
+def test_first_band_uses_base_rate():
+    assert tiered_fine(1) == 50
+    assert tiered_fine(3) == 150
+    assert tiered_fine(7) == 350
+
+
+def test_second_band_is_charged_marginally():
+    assert tiered_fine(8) == 450
+    assert tiered_fine(10) == 550
+    assert tiered_fine(14) == 1050
+
+
+def test_third_band_is_charged_marginally():
+    assert tiered_fine(15) == 1250
+    assert tiered_fine(20) == 2050
+    assert tiered_fine(30) == 1050 + 16 * 200
+
+
+def test_edges_belong_to_lower_band():
+    assert tiered_fine(7) - tiered_fine(6) == 50
+    assert tiered_fine(8) - tiered_fine(7) == 100
+    assert tiered_fine(14) - tiered_fine(13) == 100
+    assert tiered_fine(15) - tiered_fine(14) == 200
+
+
+def test_negative_late_days_rejected():
+    with pytest.raises(ValueError, match="late_days must be >= 0"):
+        tiered_fine(-1)
+
+
+def test_return_book_tiered_on_time_and_early(lib, today):
+    due = lib.lend("111", "m1", today)
+    assert lib.return_book("111", "m1", due, tiered=True) == 0
+    due = lib.lend("222", "m2", today)
+    assert lib.return_book("222", "m2", due - timedelta(days=5), tiered=True) == 0
+
+
+def test_return_book_tiered_late(lib, today):
+    due = lib.lend("111", "m1", today)
+    assert lib.return_book("111", "m1", due + timedelta(days=10), tiered=True) == 550
+
+
+def test_return_book_tiered_across_all_bands(lib, today):
+    due = lib.lend("111", "m1", today)
+    assert lib.return_book("111", "m1", due + timedelta(days=20), tiered=True) == 2050
+
+
+def test_return_book_flat_is_unchanged(lib, today):
+    due = lib.lend("111", "m1", today)
+    assert lib.return_book("111", "m1", due + timedelta(days=10), tiered=False) == 500
+    due = lib.lend("111", "m2", today)
+    assert lib.return_book("111", "m2", due + timedelta(days=20)) == 1000
+
+
+def test_tiered_return_still_removes_loan_and_checks_errors(lib, today):
+    due = lib.lend("111", "m1", today)
+    lib.return_book("111", "m1", due + timedelta(days=1), tiered=True)
+    assert lib.loans_of("m1") == []
+    assert lib.copies_available("111") == 2
+    with pytest.raises(KeyError, match="no such loan"):
+        lib.return_book("111", "m1", due, tiered=True)
+=== END ===

@@ -1,0 +1,191 @@
+[SYSTEM]
+You are an expert software engineer who writes benchmark tasks for evaluating AI coding systems. You write complete, correct, minimal code and you follow the requested output format exactly, with no commentary outside it.
+
+[USER]
+# Goal
+Create ONE new feature-development task for the repository below. A task is: (1) a clear instruction another
+engineer could implement from the text alone, (2) your own reference solution, and (3) tests that FAIL on the
+current code and PASS with your solution. An automatic checker will verify all of this.
+
+# Repository
+name: library
+language: python
+test command: {python} -m pytest -q
+
+## File tree
+library/__init__.py
+library/lending.py
+library/models.py
+tests/conftest.py
+tests/test_lending.py
+
+## FILE library/__init__.py (full content)
+```
+"""A tiny library-lending package used as a second demo repository for TaskForge."""
+
+from .lending import FINE_CENTS_PER_DAY, LOAN_DAYS, Library
+from .models import Book, Member
+
+__all__ = ["Book", "Member", "Library", "LOAN_DAYS", "FINE_CENTS_PER_DAY"]
+```
+
+## FILE library/lending.py (full content)
+```
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from .models import Book, Member
+
+LOAN_DAYS = 14
+FINE_CENTS_PER_DAY = 50
+
+
+class Library:
+    """Books, members and who has borrowed what. Dates are always passed in."""
+
+    def __init__(self) -> None:
+        self._books: dict[str, Book] = {}
+        self._members: dict[str, Member] = {}
+        self._loans: dict[tuple[str, str], date] = {}  # (isbn, member_id) -> due date
+
+    def add_book(self, book: Book) -> None:
+        if book.isbn in self._books:
+            raise ValueError(f"duplicate isbn: {book.isbn}")
+        self._books[book.isbn] = book
+
+    def add_member(self, member: Member) -> None:
+        if member.member_id in self._members:
+            raise ValueError(f"duplicate member: {member.member_id}")
+        self._members[member.member_id] = member
+
+    def copies_available(self, isbn: str) -> int:
+        book = self._book(isbn)
+        on_loan = sum(1 for (i, _m) in self._loans if i == isbn)
+        return book.copies - on_loan
+
+    def lend(self, isbn: str, member_id: str, today: date) -> date:
+        """Lend a book and return its due date."""
+        self._book(isbn)
+        self._member(member_id)
+        if (isbn, member_id) in self._loans:
+            raise ValueError("already borrowed")
+        if self.copies_available(isbn) <= 0:
+            raise ValueError("no copies available")
+        due = today + timedelta(days=LOAN_DAYS)
+        self._loans[(isbn, member_id)] = due
+        return due
+
+    def return_book(self, isbn: str, member_id: str, today: date) -> int:
+        """Take a book back and return the late fine in cents."""
+        key = (isbn, member_id)
+        if key not in self._loans:
+            raise KeyError("no such loan")
+        due = self._loans.pop(key)
+        late_days = max(0, (today - due).days)
+        return late_days * FINE_CENTS_PER_DAY
+
+    def loans_of(self, member_id: str) -> list[str]:
+        self._member(member_id)
+        return sorted(i for (i, m) in self._loans if m == member_id)
+
+    def _book(self, isbn: str) -> Book:
+        try:
+            return self._books[isbn]
+        except KeyError:
+            raise KeyError(f"unknown isbn: {isbn}") from None
+
+    def _member(self, member_id: str) -> Member:
+        try:
+            return self._members[member_id]
+        except KeyError:
+            raise KeyError(f"unknown member: {member_id}") from None
+```
+
+## FILE library/models.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Book:
+    isbn: str
+    title: str
+    copies: int = 1
+
+
+@dataclass(frozen=True)
+class Member:
+    member_id: str
+    name: str
+```
+
+## Existing tests (2 files): tests/conftest.py, tests/test_lending.py
+## Example test file tests/conftest.py (style reference)
+```
+from datetime import date
+
+import pytest
+
+from library import Book, Library, Member
+
+TODAY = date(2026, 3, 1)
+
+
+@pytest.fixture
+def lib():
+    library = Library()
+    library.add_book(Book("111", "Dune", copies=2))
+    library.add_book(Book("222", "Emma", copies=1))
+    library.add_member(Member("m1", "Ana"))
+    library.add_member(Member("m2", "Ben"))
+    return library
+
+
+@pytest.fixture
+def today():
+    return TODAY
+```
+
+# Feature idea (recipe)
+- **Record and expose a history of events** (audit_trail): Record an event each time an existing operation succeeds (and optionally fails) and expose a way to read the history back, in order, with a clear shape for each entry. Failed or no-op calls must be specified too.
+- **Cap how much of something is allowed** (quantity_limit): Add a hard cap on a quantity the code already tracks (items, uses, attempts, size). Exceeding it must be rejected with a specific error and leave state unchanged. Decide how the cap applies (per item, per owner, in total).
+- Combine the ideas above in ONE coherent feature: they must interact, and at least one requirement must only make sense when both apply.
+- Suggested value for `limit`: 10 (adapt if it does not fit the code)
+
+# Variation
+Other tasks are being made for this same repository from these recipes. Yours must differ from all of them in
+BEHAVIOUR (different rules, data flow or interactions), not merely in names, labels or constants:
+- time_window
+- validation_rejection+time_window
+- tiered_rates
+- rounding_policy
+- rule_stacking
+
+# Rules
+1. INSTRUCTION is markdown with these sections: "## Background", "## Requirements" (numbered, each independently
+   testable), "## Public interface" (the exact names, signatures, error types and messages the tests rely on) and
+   "## Examples". Do not include implementation code beyond short usage examples. The tests may only rely on what
+   the instruction states.
+2. SOLUTION: output the COMPLETE new content of every non-test file you modify or create. Keep it focused and in the
+   repository's style; use only the standard library and dependencies the repository already uses. Never edit
+   existing test files. All existing behaviour must keep working.
+3. TESTS: create NEW test file(s) only. Put them at `tests/test_tf_audit_trail_x_quantity_limit_06.py`. Tests must be deterministic (no network, no real clock, no
+   randomness), cover normal cases, boundaries and error cases, and contain at least 6 assertions overall. Each test
+   must check behaviour that is NEW (it must fail on the current code).
+4. The feature must be solvable from the instruction alone and small enough for one focused change (roughly 15 to 80
+   changed lines).
+
+# Output format (exact)
+=== TITLE ===
+<one line>
+=== INSTRUCTION ===
+<markdown>
+=== FILE solution <relative/path> ===
+<complete new file content>
+=== FILE test <relative/path> ===
+<complete new file content>
+=== END ===
+(Repeat the FILE sections as needed. No code fences around file content. No text outside the sections.)

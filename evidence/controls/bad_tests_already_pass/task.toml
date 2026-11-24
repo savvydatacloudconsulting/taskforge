@@ -1,0 +1,21 @@
+schema = "1"
+
+[task]
+id = "control__bad_tests_already_pass"
+title = "Tests only check behaviour that already exists."
+recipes = ["control"]
+
+[repo]
+name = "shop"
+language = "python"
+base_commit = "edb821f4489b12ec52b8f1e33bd2bc7319b7cf9f"
+snapshot = true
+
+[run]
+test_command = "{python} -m pytest -q"
+timeout_seconds = 120
+feature_tests = ["tests/test_tf_limit.py"]
+
+[meta]
+generator = "taskforge 0.1.0"
+attempts = 1

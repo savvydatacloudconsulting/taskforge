@@ -1,0 +1,9 @@
+task                                         fails_before   passes_after   nothing_breaks tests_have_tee verdict
+library__audit_trail_x_quantity_limit__06    PASS           PASS           PASS           PASS           ACCEPTED
+library__rounding_policy__04                 PASS           PASS           PASS           PASS           ACCEPTED
+library__rule_stacking__05                   PASS           PASS           PASS           PASS           ACCEPTED
+library__tiered_rates__03                    PASS           PASS           PASS           PASS           ACCEPTED
+library__time_window__01                     PASS           PASS           PASS           PASS           ACCEPTED
+library__validation_rejection_x_time_window_ PASS           PASS           PASS           PASS           ACCEPTED
+6 of 6 accepted
+exit=0

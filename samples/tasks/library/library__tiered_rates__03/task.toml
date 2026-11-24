@@ -1,0 +1,21 @@
+schema = "1"
+
+[task]
+id = "library__tiered_rates__03"
+title = "Escalating tiered late fines for overdue returns"
+recipes = ["tiered_rates"]
+
+[repo]
+name = "library"
+language = "python"
+base_commit = "55a3fafe5b933f800a5dbf32f0a37b50b3a375b5"
+snapshot = true
+
+[run]
+test_command = "{python} -m pytest -q"
+timeout_seconds = 120
+feature_tests = ["tests/test_tf_tiered_rates_03.py"]
+
+[meta]
+generator = "taskforge 0.1.0"
+attempts = 2

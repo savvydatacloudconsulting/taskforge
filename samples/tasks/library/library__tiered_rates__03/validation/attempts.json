@@ -1,0 +1,25 @@
+{
+  "task_id": "library__tiered_rates__03",
+  "status": "accepted",
+  "title": "Escalating tiered late fines for overdue returns",
+  "recipes": [
+    "tiered_rates"
+  ],
+  "reason": "",
+  "nearest_task": "library__validation_rejection_x_time_window__02",
+  "nearest_distance": 0.8175,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "proof_failed",
+      "detail": "failed: passes_after",
+      "seconds": 4.2298332000009395
+    },
+    {
+      "number": 2,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 19.170853000001443
+    }
+  ]
+}

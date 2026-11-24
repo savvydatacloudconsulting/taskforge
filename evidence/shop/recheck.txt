@@ -1,0 +1,11 @@
+task                                         fails_before   passes_after   nothing_breaks tests_have_tee verdict
+shop__audit_trail__06                        PASS           PASS           PASS           PASS           ACCEPTED
+shop__dedup_merge__02                        PASS           PASS           PASS           PASS           ACCEPTED
+shop__quantity_limit_x_rounding_policy__07   PASS           PASS           PASS           PASS           ACCEPTED
+shop__rounding_policy_x_validation_rejection PASS           PASS           PASS           PASS           ACCEPTED
+shop__rule_stacking__03                      PASS           PASS           PASS           PASS           ACCEPTED
+shop__tiered_rates_x_rule_stacking__05       PASS           PASS           PASS           PASS           ACCEPTED
+shop__time_window__01                        PASS           PASS           PASS           PASS           ACCEPTED
+shop__validation_rejection__08               PASS           PASS           PASS           PASS           ACCEPTED
+8 of 8 accepted
+exit=0

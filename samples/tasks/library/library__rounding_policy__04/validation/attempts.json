@@ -1,0 +1,19 @@
+{
+  "task_id": "library__rounding_policy__04",
+  "status": "accepted",
+  "title": "Member fine discounts with a half-up 5-cent rounding policy",
+  "recipes": [
+    "rounding_policy"
+  ],
+  "reason": "",
+  "nearest_task": "library__tiered_rates__03",
+  "nearest_distance": 0.721,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 16.661552699999447
+    }
+  ]
+}

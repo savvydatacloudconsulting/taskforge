@@ -1,0 +1,242 @@
+[SYSTEM]
+You are a careful software engineer. You implement feature requests in existing code. You follow the requested output format exactly, with no commentary outside it.
+
+[USER]
+# Task
+Implement the feature request below in the repository shown. Hidden tests will check your work against the
+Requirements and the Public interface. You cannot see them. The existing tests must keep passing.
+
+# Repository
+name: shop
+language: python
+test command: {python} -m pytest -q
+
+## File tree
+shop/__init__.py
+shop/cart.py
+shop/catalog.py
+shop/checkout.py
+shop/pricing.py
+tests/conftest.py
+tests/test_cart.py
+tests/test_catalog.py
+tests/test_pricing_checkout.py
+
+## FILE shop/__init__.py (full content)
+```
+"""A tiny shopping-cart library used as a demo repository for TaskForge."""
+
+from .cart import Cart
+from .catalog import Catalog, Product
+from .checkout import Order, checkout
+from .pricing import format_money, tax_cents
+
+__all__ = ["Cart", "Catalog", "Product", "Order", "checkout", "format_money", "tax_cents"]
+```
+
+## FILE shop/cart.py (full content)
+```
+from __future__ import annotations
+
+from .catalog import Catalog, Product
+
+
+class Cart:
+    """Items a customer wants to buy: SKU -> quantity."""
+
+    def __init__(self, catalog: Catalog):
+        self.catalog = catalog
+        self._lines: dict[str, int] = {}
+
+    def add(self, sku: str, quantity: int = 1) -> None:
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        self.catalog.get(sku)  # raises KeyError for unknown products
+        self._lines[sku] = self._lines.get(sku, 0) + quantity
+
+    def remove(self, sku: str, quantity: int | None = None) -> None:
+        if sku not in self._lines:
+            raise KeyError(f"not in cart: {sku}")
+        if quantity is None or quantity >= self._lines[sku]:
+            del self._lines[sku]
+        else:
+            if quantity <= 0:
+                raise ValueError("quantity must be positive")
+            self._lines[sku] -= quantity
+
+    def quantity(self, sku: str) -> int:
+        return self._lines.get(sku, 0)
+
+    def lines(self) -> list[tuple[Product, int]]:
+        return [(self.catalog.get(sku), qty) for sku, qty in self._lines.items()]
+
+    def subtotal_cents(self) -> int:
+        return sum(product.price_cents * qty for product, qty in self.lines())
+
+    def is_empty(self) -> bool:
+        return not self._lines
+
+    def clear(self) -> None:
+        self._lines.clear()
+```
+
+## FILE shop/catalog.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Product:
+    sku: str
+    name: str
+    price_cents: int
+    category: str = "general"
+
+
+class Catalog:
+    """A set of products, looked up by SKU."""
+
+    def __init__(self, products=()):
+        self._products: dict[str, Product] = {}
+        for product in products:
+            self.add(product)
+
+    def add(self, product: Product) -> None:
+        if product.sku in self._products:
+            raise ValueError(f"duplicate sku: {product.sku}")
+        self._products[product.sku] = product
+
+    def get(self, sku: str) -> Product:
+        try:
+            return self._products[sku]
+        except KeyError:
+            raise KeyError(f"unknown sku: {sku}") from None
+
+    def __contains__(self, sku: str) -> bool:
+        return sku in self._products
+
+    def by_category(self, category: str) -> list[Product]:
+        return [p for p in self._products.values() if p.category == category]
+```
+
+## FILE shop/checkout.py (full content)
+```
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .cart import Cart
+from .pricing import tax_cents
+
+
+@dataclass
+class Order:
+    order_id: str
+    lines: list[tuple[str, int, int]]  # (sku, quantity, unit price in cents)
+    subtotal_cents: int
+    tax_cents: int
+    total_cents: int
+
+
+def checkout(cart: Cart, order_id: str) -> Order:
+    """Turn a cart into an order. The cart is emptied afterwards."""
+    if cart.is_empty():
+        raise ValueError("cart is empty")
+    lines = [(p.sku, qty, p.price_cents) for p, qty in cart.lines()]
+    subtotal = cart.subtotal_cents()
+    tax = tax_cents(subtotal)
+    order = Order(order_id, lines, subtotal, tax, subtotal + tax)
+    cart.clear()
+    return order
+```
+
+## FILE shop/pricing.py (full content)
+```
+from __future__ import annotations
+
+TAX_RATE_PERCENT = 10
+
+
+def tax_cents(amount_cents: int, rate_percent: int = TAX_RATE_PERCENT) -> int:
+    """Tax on an amount, rounded half up to the nearest cent."""
+    return (amount_cents * rate_percent + 50) // 100
+
+
+def format_money(cents: int) -> str:
+    sign = "-" if cents < 0 else ""
+    cents = abs(cents)
+    return f"{sign}${cents // 100}.{cents % 100:02d}"
+```
+
+## Existing tests (4 files): tests/conftest.py, tests/test_cart.py, tests/test_catalog.py, tests/test_pricing_checkout.py
+## Example test file tests/conftest.py (style reference)
+```
+import pytest
+
+from shop import Cart, Catalog, Product
+
+
+@pytest.fixture
+def catalog():
+    return Catalog([
+        Product("PEN", "Pen", 150, "office"),
+        Product("BOOK", "Notebook", 1200, "office"),
+        Product("MUG", "Mug", 800, "kitchen"),
+    ])
+
+
+@pytest.fixture
+def cart(catalog):
+    return Cart(catalog)
+```
+
+# Feature request
+## Background
+The `shop` library can turn a cart into an `Order` with `checkout(cart, order_id)`, but it has no notion of promotions. Marketing wants a percentage-off promotion that is only valid inside a time window (for example a weekend sale). To keep behaviour deterministic, the current time must never be read from the system clock: the caller passes it in.
+
+## Requirements
+1. Add a new module `shop/promotions.py` with a frozen dataclass `Promotion` that has the fields `name: str`, `percent_off: int`, `start: datetime`, `end: datetime` and `category: str | None = None` (in that order).
+2. `Promotion.is_active(now)` returns `True` when `start <= now < end` (start inclusive, end exclusive) and `False` otherwise.
+3. Creating a `Promotion` with `percent_off` below 1 or above 100 raises `ValueError("percent_off must be between 1 and 100")`.
+4. Creating a `Promotion` with `end` less than or equal to `start` raises `ValueError("end must be after start")`.
+5. `checkout` accepts two new optional parameters, `promotion=None` and `now=None`, after `order_id`. With no promotion, behaviour is exactly as before and `Order.discount_cents` is `0`.
+6. `Order` gets a new last field `discount_cents: int = 0`. `Order.subtotal_cents` remains the full pre-discount subtotal.
+7. When a promotion is given and is active at `now`, the discount is computed from the eligible lines only: the lines whose product category equals `promotion.category`, or all lines when `promotion.category` is `None`. `discount_cents = eligible_subtotal_cents * percent_off // 100` (rounded down).
+8. Tax is computed with the existing `tax_cents` on `subtotal_cents - discount_cents`, and `total_cents = subtotal_cents - discount_cents + tax_cents`.
+9. When a promotion is given but is not active at `now`, or no line is eligible, the discount is `0` and the order is identical to one created without a promotion.
+10. When a promotion is given and `now` is `None`, `checkout` raises `ValueError("now is required when a promotion is given")`, and the cart is left untouched (not emptied). The existing empty-cart check still applies first.
+11. `Promotion` is also exported from the `shop` package (`from shop import Promotion` works).
+
+## Public interface
+- `shop.promotions.Promotion(name, percent_off, start, end, category=None)`: frozen dataclass; `start` and `end` are `datetime.datetime` values.
+- `Promotion.is_active(now: datetime) -> bool`
+- `shop.checkout.checkout(cart, order_id, promotion=None, now=None) -> Order`
+- `shop.checkout.Order.discount_cents: int` (default `0`, last field)
+- Errors: `ValueError` with the exact messages given above.
+
+## Examples
+```python
+from datetime import datetime
+from shop import Promotion, checkout
+
+promo = Promotion("Sale", 10, datetime(2025, 1, 1), datetime(2025, 1, 2), category="office")
+# cart: 1 BOOK (1200, office) + 1 MUG (800, kitchen)
+order = checkout(cart, "A1", promo, datetime(2025, 1, 1, 12, 0))
+# subtotal 2000, discount 120, tax 188, total 2068
+order = checkout(cart, "A2", promo, datetime(2025, 1, 2))   # end is exclusive -> discount 0
+```
+
+# Rules
+1. Output the COMPLETE new content of every non-test file you modify or create. Do not output unchanged files.
+2. Do not edit or delete existing tests and do not add tests.
+3. Use only the standard library and dependencies the repository already uses.
+4. Follow every requirement exactly: names, signatures, error types, exact messages and boundary behaviour.
+
+# Output format (exact)
+=== FILE solution <relative/path> ===
+<complete new file content>
+=== END ===
+(Repeat the FILE section for every file you modify or create. No code fences around file content.
+No text outside the sections.)
