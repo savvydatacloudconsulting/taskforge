@@ -55,7 +55,8 @@ on your computer, so only point it at repositories you trust.
 Needs Python 3.11+ and git. No other packages (pytest only for the repositories you test).
 
 ```bash
-git clone <this repository> && cd taskforge
+git clone https://github.com/savvydatacloudconsulting/taskforge.git
+cd taskforge
 python -m venv .venv && source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
