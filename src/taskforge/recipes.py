@@ -142,6 +142,14 @@ def plan_batch(n: int, seed: int = 0, only: list[str] | None = None) -> list[Pla
     return plans
 
 
+def make_plan(ids: list[str], seed: int | None = None) -> Plan:
+    """A plan for the chosen recipe ids (one, or two to combine)."""
+    unknown = [i for i in ids if i not in BY_ID]
+    if unknown or not 1 <= len(ids) <= 2 or len(set(ids)) != len(ids):
+        raise ValueError("choose one recipe, or two different recipes, from the list")
+    return _with_params(random.Random(seed), [BY_ID[i] for i in ids])
+
+
 def _with_params(rng: random.Random, recipes: list[Recipe]) -> Plan:
     params: dict[str, object] = {}
     for r in recipes:

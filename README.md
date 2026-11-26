@@ -30,10 +30,25 @@ differ only in names, strings or numbers are rejected as **cosmetic duplicates**
 | Checker self-test (`taskforge controls`) | the 1 good control task is accepted and **all 6 bad ones are rejected for the right reason** |
 | Offline re-check of the shop packages (`check-all`) | **8 of 8** re-accepted from the saved files alone |
 | JavaScript repository (`examples/jscart`) | goes through the same proofs; mutation testing is skipped (Python only), and reported as skipped |
-| Test suite | **90 tests pass** (`evidence/pytest.txt`), including the checker's control tasks and the factory loop with scripted AI answers |
+| Test suite | **103 tests pass** (`evidence/pytest.txt`), including the checker's control tasks and the factory loop with scripted AI answers |
 
 Evidence lives in `evidence/` and the generated task packages in `samples/tasks/`. See
 [docs/LIMITATIONS.md](docs/LIMITATIONS.md) for how the samples were made and what is not covered. Read that file first.
+
+## Try it in the browser
+
+```bash
+taskforge ui          # then open http://localhost:8765
+```
+
+The page runs the real factory and shows each step as it happens: read the repository and pick a recipe, the feature
+request, the reference solution and tests, the three checks, the planted bugs, and the saved package. Three buttons then
+try to **cheat the checker** (tests that already pass, a broken solution, tests with the assertions removed); it must
+reject all three. "Who writes the exam?" offers a recorded example (offline), any AI chat by copy and paste (no key
+needed), Claude Code, or the Anthropic API.
+
+The server listens on 127.0.0.1 only and needs a per-session token, but it does run repository tests and AI-written code
+on your computer, so only point it at repositories you trust.
 
 ## Quick start
 

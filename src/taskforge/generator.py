@@ -289,7 +289,7 @@ class Factory:
     def __init__(
         self, repo: RepoConfig, backend: Backend, out_dir: Path, *, seed: int = 0, max_attempts: int = 3,
         min_distance: float = MIN_DISTANCE, checker: Checker | None = None, context_budget: int = 60_000,
-        log: Callable[[str], None] = lambda s: None,
+        log: Callable[[str], None] = lambda s: None, on_event: Callable[[dict], None] | None = None,
     ):
         self.repo = repo
         self.backend = backend
@@ -298,6 +298,9 @@ class Factory:
         self.max_attempts = max_attempts
         self.min_distance = min_distance
         self.checker = checker or Checker(repo, seed=seed)
+        self.on_event = on_event
+        if on_event is not None:
+            self.checker.progress = on_event
         self.context_budget = context_budget
         self.log = log
         self._ctx: RepoContext | None = None
@@ -362,6 +365,23 @@ class Factory:
             self.log(f"  -> {tag}  after {len(result.attempts)} attempt(s)")
         return results
 
+    def _event(self, kind: str, **data) -> None:
+        if self.on_event is not None:
+            self.on_event({"type": kind, **data})
+
+    def make_task(self, task_id: str, plan: Plan, others: list[str] | None = None) -> TaskResult:
+        """Make (and save) one task for one plan. Used by the web page."""
+        result = self._make_task(task_id, plan, self.context(), list(others or []))
+        if result.status != "pending":
+            self._write(result)
+        return result
+
+    def load_accepted_signatures(self) -> None:
+        """Remember tasks already saved in the output folder, so new ones must differ from them."""
+        for toml in sorted((self.out / "accepted").glob("*/task.toml")):
+            pkg = TaskPackage.load(toml.parent)
+            self.accepted_sigs.append(signature(pkg.task_id, pkg.solution_patch, pkg.recipes))
+
     def _existing_count(self) -> int:
         n = 0
         for sub in ("accepted", "rejected"):
@@ -387,6 +407,7 @@ class Factory:
         existing = set(ctx.tree)
         for attempt in range(1, self.max_attempts + 1):
             t0 = time.monotonic()
+            self._event("attempt", number=attempt, previous=vars(result.attempts[-1]) if result.attempts else None)
             prompt = base_prompt + (feedback_block(last_raw, feedback) if feedback else "")
             try:
                 raw = self.backend.complete(prompt, DEFAULT_SYSTEM)
@@ -444,6 +465,7 @@ class Factory:
                 generator=f"taskforge {__version__}",
             )
             result.package, result.title = pkg, parsed.title
+            self._event("draft", title=pkg.title, instruction=pkg.instruction, patch=pkg.solution_patch, tests=pkg.test_files)
             report = self.checker.check(pkg)
             result.report = report
             if not report.accepted:

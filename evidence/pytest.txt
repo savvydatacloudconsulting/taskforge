@@ -3,15 +3,16 @@ platform win32 -- Python 3.14.3, pytest-9.2.0, pluggy-1.7.0
 rootdir: <project>
 configfile: pyproject.toml
 testpaths: tests
-collected 90 items
+collected 103 items
 
-tests\test_checker_controls.py ............                              [ 13%]
-tests\test_factory_cli_report.py ...........                             [ 25%]
-tests\test_mutate_patchutil.py ......................                    [ 50%]
-tests\test_other_languages.py ...                                        [ 53%]
-tests\test_runner_repo_package.py .............                          [ 67%]
-tests\test_solver.py ............                                        [ 81%]
-tests\test_variation_parse_llm.py .................                      [100%]
+tests\test_checker_controls.py ............                              [ 11%]
+tests\test_factory_cli_report.py ...........                             [ 22%]
+tests\test_mutate_patchutil.py ......................                    [ 43%]
+tests\test_other_languages.py ...                                        [ 46%]
+tests\test_runner_repo_package.py .............                          [ 59%]
+tests\test_solver.py ............                                        [ 70%]
+tests\test_variation_parse_llm.py .................                      [ 87%]
+tests\test_webapp.py .............                                       [100%]
 
-======================= 90 passed in 273.22s (0:04:33) ========================
+======================= 103 passed in 269.64s (0:04:29) =======================
 exit=0

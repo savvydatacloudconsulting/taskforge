@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import time
+import webbrowser
 from pathlib import Path
 
 from . import __version__
@@ -20,6 +21,7 @@ from .report import PROOF_LABELS, write_reports
 from .repo import detect_language, load_context, resolve_repo
 from .runner import Workspace
 from .solver import solve_all
+from .webapp import App, make_server
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SYM = {"pass": "PASS", "fail": "FAIL", "skipped": "skip"}
@@ -204,6 +206,26 @@ def cmd_demo(a) -> int:
     return cmd_generate(ns)
 
 
+def cmd_ui(a) -> int:
+    """Start the local web page."""
+    try:
+        server = make_server(App(), a.port)
+    except OSError as e:
+        _say(f"error: cannot use port {a.port} ({e}); try --port with another number")
+        return 2
+    url = f"http://localhost:{server.server_address[1]}"
+    _say(f"TaskForge is running at {url}  (only this computer can reach it; press Ctrl+C to stop)")
+    if a.open:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        _say("stopped")
+    finally:
+        server.server_close()
+    return 0
+
+
 def _load_dotenv(path: Path = Path(".env")) -> None:
     """Read KEY=VALUE lines from ./.env (never overriding real environment variables)."""
     try:
@@ -292,6 +314,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--shop", help="path to the shop example (default: bundled)")
     p.add_argument("--out", help="also write the control task packages and controls.md here")
     p.set_defaults(fn=cmd_controls)
+
+    p = sub.add_parser("ui", help="open the local web page that makes an exam step by step")
+    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--open", action="store_true", help="also open it in your web browser")
+    p.set_defaults(fn=cmd_ui)
 
     p = sub.add_parser("demo", help="run the full pipeline offline with recorded AI answers")
     p.add_argument("--example", default="shop")

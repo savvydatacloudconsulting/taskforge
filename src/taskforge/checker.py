@@ -75,14 +75,23 @@ def _outcome_summary(res: RunResult) -> dict:
 
 class Checker:
     def __init__(self, repo: RepoConfig, *, stability_runs: int = 3, max_mutants: int = 12,
-                 min_kill_rate: float = 0.6, seed: int = 0, mutant_timeout: int = 60):
+                 min_kill_rate: float = 0.6, seed: int = 0, mutant_timeout: int = 60, progress=None):
         self.repo = repo
         self.stability_runs = stability_runs
         self.max_mutants = max_mutants
         self.min_kill_rate = min_kill_rate
         self.seed = seed
         self.mutant_timeout = mutant_timeout
+        self.progress = progress  # optional callable(event dict), used by the web page
         self._baseline: tuple[ProofResult, dict[str, str]] | None = None
+
+    def _emit(self, kind: str, **data) -> None:
+        if self.progress is not None:
+            self.progress({"type": kind, **data})
+
+    def _record(self, report: "CheckReport", result: ProofResult) -> None:
+        report.proofs.append(result)
+        self._emit("proof", name=result.name, status=result.status, detail=result.detail, evidence=result.evidence)
 
     # ---------------------------------------------------------------- baseline
     def baseline(self) -> tuple[ProofResult, dict[str, str]]:
@@ -107,7 +116,9 @@ class Checker:
     # ------------------------------------------------------------------ check
     def check(self, task: TaskPackage, *, only: list[str] | None = None) -> CheckReport:
         start = time.monotonic()
+        self._emit("proof_start", name="baseline")
         base, base_outcomes = self.baseline()
+        self._emit("proof", name="baseline", status=base.status, detail=base.detail, evidence=base.evidence)
         report = CheckReport(task.task_id, [], baseline=base)
         if base.status == FAIL:
             report.seconds = time.monotonic() - start
@@ -115,23 +126,27 @@ class Checker:
         wanted = only or PROOF_ORDER
         files = task.feature_tests
         if not files:
-            report.proofs.append(ProofResult("fails_before", FAIL, "the task has no feature test files"))
+            self._record(report, ProofResult("fails_before", FAIL, "the task has no feature test files"))
             report.seconds = time.monotonic() - start
             return report
 
-        report.proofs.append(self._fails_before(task, files))
+        self._emit("proof_start", name="fails_before")
+        self._record(report, self._fails_before(task, files))
 
         ws_after: Workspace | None = None
         try:
+            self._emit("proof_start", name="passes_after")
             passes, ws_after = self._passes_after(task, files)
-            report.proofs.append(passes)
+            self._record(report, passes)
             if passes.status == PASS and ws_after is not None:
-                report.proofs.append(self._nothing_breaks(ws_after, base_outcomes))
-                report.proofs.append(self._teeth(task, ws_after, files))
+                self._emit("proof_start", name="nothing_breaks")
+                self._record(report, self._nothing_breaks(ws_after, base_outcomes))
+                self._emit("proof_start", name="tests_have_teeth")
+                self._record(report, self._teeth(task, ws_after, files))
             else:
                 why = "skipped: needs 'passes_after' first"
-                report.proofs.append(ProofResult("nothing_breaks", SKIPPED, why))
-                report.proofs.append(ProofResult("tests_have_teeth", SKIPPED, why))
+                self._record(report, ProofResult("nothing_breaks", SKIPPED, why))
+                self._record(report, ProofResult("tests_have_teeth", SKIPPED, why))
         finally:
             if ws_after is not None:
                 ws_after.cleanup()
@@ -218,7 +233,7 @@ class Checker:
                                f"mutation testing is only implemented for Python (language: {task.language})")
         changes = parse_patch(task.solution_patch)
         targets = {p: c for p, c in changes.items() if p.endswith(".py") and not is_test_path(p)}
-        pool: list[tuple[str, int, str, str]] = []  # (path, site_index, description, original source)
+        pool: list[tuple[str, int, int, str, str]] = []  # (path, site_index, line, description, original source)
         for path, change in sorted(targets.items()):
             if not ws.exists(path):
                 continue
@@ -227,7 +242,7 @@ class Checker:
                 sites = find_sites(src, change.added_lines)
             except SyntaxError:
                 continue
-            pool += [(path, s.index, s.description, src) for s in sites]
+            pool += [(path, s.index, s.lineno, s.description, src) for s in sites]
         if not pool:
             return ProofResult("tests_have_teeth", SKIPPED,
                                "the solution has no testable logic to mutate (no comparisons, arithmetic, conditions or returns)")
@@ -235,7 +250,8 @@ class Checker:
         rng.shuffle(pool)
         chosen = pool[: self.max_mutants]
         killed, survived, invalid = 0, [], 0
-        for path, idx, desc, original in chosen:
+        mutants: list[dict] = []
+        for path, idx, lineno, desc, original in chosen:
             try:
                 mutated = apply_mutation(original, idx, targets[path].added_lines)
             except (ValueError, SyntaxError):
@@ -248,12 +264,17 @@ class Checker:
                 survived.append(f"{path}: {desc}")
             else:
                 killed += 1
+            source_lines = original.splitlines()
+            entry = {"file": path, "site": idx, "line": lineno, "change": desc, "caught": not res.ok,
+                     "code": source_lines[lineno - 1].strip() if 0 < lineno <= len(source_lines) else ""}
+            mutants.append(entry)
+            self._emit("mutant", mutant=entry, planned=len(chosen))
         total = killed + len(survived)
         if total == 0:
             return ProofResult("tests_have_teeth", SKIPPED, "no valid mutants could be built", {"invalid": invalid})
         rate = killed / total
         ev = {"mutants": total, "killed": killed, "survived": survived, "kill_rate": round(rate, 3),
-              "available_sites": len(pool), "required": self.min_kill_rate}
+              "available_sites": len(pool), "required": self.min_kill_rate, "mutant_list": mutants}
         if rate >= self.min_kill_rate:
             return ProofResult("tests_have_teeth", PASS, f"tests caught {killed} of {total} broken versions ({rate:.0%})", ev)
         return ProofResult("tests_have_teeth", FAIL,

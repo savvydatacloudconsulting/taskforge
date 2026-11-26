@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TaskForge: Exam Maker for Code</title>
+<style>
+:root{--blue:#176EB8;--orange:#DC8335;--ink:#0F1016;--muted:#5B6672;--card:#fff;--soft:#F3F7FB;--line:#D5E2F0;--bg:#EEF2F7;--ok:#1F8A4C;--bad:#B8352A;--code:#0F1016;--codeink:#E8ECF1}
+@media (prefers-color-scheme:dark){:root{--ink:#E8ECF1;--muted:#9AA7B4;--card:#161B22;--soft:#1C232D;--line:#2B3440;--bg:#0D1117;--code:#090C10}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;font:15px/1.55 system-ui,"Segoe UI",Arial,sans-serif;color:var(--ink);background:var(--bg)}
+header{background:#000;color:#fff;padding:18px 20px}
+header h1{margin:0;font-size:22px}header p{margin:2px 0 0;color:#B8C4D0;font-size:14px}
+header nav{margin-top:8px;font-size:13px}header nav a{color:#8CC4F2;margin-right:14px}
+main{max-width:980px;margin:0 auto;padding:18px 16px 80px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+section.idle>.body{display:none}section.idle{opacity:.6}
+h2{display:flex;align-items:center;gap:10px;margin:0;font-size:17px}
+h2 .num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:14px}
+h2 .tag{margin-left:auto}
+h3{font-size:14px;margin:16px 0 6px}
+.body{margin-top:12px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+select,input[type=text],textarea{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--soft);color:var(--ink);font:inherit}
+textarea{font:12.5px/1.45 Consolas,ui-monospace,monospace;min-height:160px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:12px}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:9px 16px;background:var(--blue);color:#fff;cursor:pointer}
+button.secondary{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:13px;font-weight:500}
+.chip[aria-pressed=true]{background:var(--blue);border-color:var(--blue);color:#fff}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px;font-size:13px}
+.facts span{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:3px 9px}
+.pill{display:inline-block;border-radius:99px;padding:2px 10px;font-size:12px;font-weight:700;color:#fff;background:#8A96A3;white-space:nowrap}
+.pill.pass{background:var(--ok)}.pill.fail{background:var(--bad)}.pill.running,.pill.waiting{background:var(--orange)}
+.note{font-size:13px;color:var(--muted);margin:6px 0}
+.banner{border-radius:10px;padding:12px 14px;font-weight:600;border:2px solid var(--line);background:var(--soft);margin-top:10px}
+.banner.pass{border-color:var(--ok)}.banner.fail{border-color:var(--bad)}.banner.wait{border-color:var(--orange)}
+pre{background:var(--code);color:var(--codeink);border-radius:8px;padding:12px;overflow:auto;max-height:420px;font:12.5px/1.5 Consolas,ui-monospace,monospace;margin:6px 0}
+pre .add{color:#7CE0A3}pre .del{color:#FF9A8F}pre .meta{color:#8CC4F2}
+.doc{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 16px;max-height:420px;overflow:auto}
+.doc h4{margin:14px 0 4px;font-size:14px;color:var(--blue)}.doc p{margin:6px 0}.doc ul,.doc ol{margin:4px 0;padding-left:22px}
+.doc code{background:var(--card);border-radius:4px;padding:0 4px;font-size:13px}
+.checks{display:grid;gap:8px}
+.check{display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:start;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.check .pill{justify-self:start}.check b{display:block;font-size:14px}.check small{color:var(--muted)}
+.bar{height:10px;background:var(--soft);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td code{font-size:12px;word-break:break-all}
+.scroll{overflow:auto;max-height:340px}
+.cheats{display:flex;flex-wrap:wrap;gap:8px}
+#error{display:none;border:2px solid var(--bad);background:var(--card);border-radius:10px;padding:12px 14px;margin-bottom:14px}
+#paste{border:2px solid var(--orange)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>TaskForge: Exam Maker for Code</h1>
+  <p>Turns a real codebase into a coding exam, then proves the exam is fair.</p>
+  <nav id="reports"></nav>
+</header>
+<main>
+  <div id="error" role="alert"></div>
+
+  <section id="s1">
+    <h2><span class="num">1</span>Read the repo and pick a recipe</h2>
+    <div class="body">
+      <div class="row">
+        <div><label for="mode">Who writes the exam?</label>
+          <select id="mode">
+            <option value="recorded">Recorded example (works offline)</option>
+            <option value="paste">Any AI chat: copy the prompt, paste the reply</option>
+            <option value="claude">Claude Code on this computer (live)</option>
+            <option value="api">Anthropic API key (live)</option>
+          </select></div>
+        <div id="recordedBox"><label for="recorded">Recorded exam</label><select id="recorded"></select></div>
+        <div id="repoBox"><label for="repo">Repository</label><select id="repo"></select></div>
+      </div>
+      <div id="customBox" class="row" hidden><div><label for="custom">Full path of the folder (its tests will be run on this computer)</label><input type="text" id="custom" placeholder="C:\path\to\repository"></div></div>
+      <div id="facts" class="facts" aria-live="polite"></div>
+      <div id="recipeBox"><label>Recipe: pick one, or two to combine them</label><div id="chips" class="chips"></div></div>
+      <p class="note" id="modeNote"></p>
+      <button id="go">Make the exam</button>
+      <button id="cancel" class="secondary" hidden>Cancel</button>
+      <span id="status" class="note" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section id="paste" hidden>
+    <h2>Your turn: ask an AI</h2>
+    <div class="body">
+      <p class="note">Copy this prompt into any AI chat (Claude, or another), then paste the whole reply below.</p>
+      <textarea id="prompt" readonly aria-label="Prompt to copy"></textarea>
+      <p><button id="copy" class="secondary">Copy prompt</button></p>
+      <label for="reply">The AI's reply</label>
+      <textarea id="reply" placeholder="=== TITLE === ..."></textarea>
+      <p><button id="send">Check this reply</button></p>
+    </div>
+  </section>
+
+  <section id="s2" class="idle"><h2><span class="num">2</span>The feature request</h2>
+    <div class="body"><h3 id="title"></h3><div id="instruction" class="doc"></div></div></section>
+
+  <section id="s3" class="idle"><h2><span class="num">3</span>The correct answer and the tests</h2>
+    <div class="body"><h3>Reference solution (what changes in the code)</h3><pre id="patch"></pre><h3>Tests</h3><div id="tests"></div></div></section>
+
+  <section id="s4" class="idle"><h2><span class="num">4</span>Three checks</h2>
+    <div class="body"><div id="checks" class="checks"></div></div></section>
+
+  <section id="s5" class="idle"><h2><span class="num">5</span>Break the answer on purpose</h2>
+    <div class="body">
+      <p class="note">The checker plants small bugs in the solution, one at a time. Good tests must notice them.</p>
+      <div class="bar"><i id="bar"></i></div><p id="killText" aria-live="polite"></p>
+      <div class="scroll"><table><thead><tr><th>Result</th><th>Planted bug</th><th>Original line</th></tr></thead><tbody id="mutants"></tbody></table></div>
+    </div></section>
+
+  <section id="s6" class="idle"><h2><span class="num">6</span>The saved exam package</h2>
+    <div class="body"><div id="verdict"></div><div id="package"></div></div></section>
+
+  <section id="cheat" class="idle"><h2>Try to cheat the checker</h2>
+    <div class="body">
+      <p class="note">Each button makes a bad copy of the exam above and checks it again. A fair checker must reject all of them. Your saved exam is not changed.</p>
+      <div class="cheats" id="cheats"></div>
+      <div id="cheatResult" aria-live="polite"></div>
+    </div></section>
+</main>
+
+<script>
+const TOKEN = "__TOKEN__";
+const $ = id => document.getElementById(id);
+const CHECKS = [
+  ["baseline", "Starting point", "The repository's own tests pass before any change"],
+  ["fails_before", "Check 1", "The new tests FAIL on the original code"],
+  ["passes_after", "Check 2", "The new tests PASS with the reference solution"],
+  ["nothing_breaks", "Check 3", "The old tests still pass"],
+];
+const NOTES = {
+  recorded: "Replays an AI answer recorded earlier. The checks run for real, right now.",
+  paste: "Works without any key or subscription link: you carry the text between this page and an AI chat.",
+  claude: "Needs Claude Code installed and logged in. If the login has expired, run 'claude' in a terminal first.",
+  api: "Needs ANTHROPIC_API_KEY set before starting TaskForge. Usage is billed to that key.",
+};
+let info = null, chosen = [], examJob = null, activeJob = null, timer = null, shownDraft = "";
+
+async function api(path, body) {
+  const opt = {headers: {"X-TaskForge-Token": TOKEN}};
+  if (body) { opt.method = "POST"; opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+  const res = await fetch(path, opt);
+  const data = await res.json().catch(() => ({error: "the server sent an unreadable answer"}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+function el(tag, text, cls) { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; }
+function showError(msg) { const b = $("error"); b.textContent = msg; b.style.display = msg ? "block" : "none"; if (msg) b.scrollIntoView({block: "nearest"}); }
+function wake(id, on = true) { $(id).classList.toggle("idle", !on); }
+const SHOW = {pass: "PASS", fail: "FAIL", running: "running", skipped: "skipped"};
+
+/* ---------- step 1 ---------- */
+function repoValue() { return $("repo").value === "__custom" ? $("custom").value : $("repo").value; }
+function currentRecorded() { return info.recorded.find(r => r.id === $("recorded").value); }
+function refreshMode() {
+  const mode = $("mode").value, rec = mode === "recorded";
+  $("recordedBox").hidden = !rec; $("repoBox").hidden = rec; $("recipeBox").hidden = rec;
+  $("customBox").hidden = rec || $("repo").value !== "__custom";
+  let note = NOTES[mode];
+  if (mode === "claude" && !info.claude_installed) note = "The 'claude' command was not found on this computer.";
+  if (mode === "api" && !info.api_key_set) note = "ANTHROPIC_API_KEY is not set, so this will not work until you set it and restart.";
+  $("modeNote").textContent = note;
+  if (rec) { const r = currentRecorded(); chosen = r ? r.recipes.slice() : []; analyze(r && r.repo); }
+  else analyze(repoValue());
+  refreshChips();
+}
+function refreshChips() {
+  document.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", chosen.includes(c.dataset.id)));
+  const mode = $("mode").value;
+  $("go").disabled = !!activeJob || (mode !== "recorded" && (!chosen.length || !repoValue()));
+}
+let analyzeSeq = 0;
+async function analyze(repo) {
+  const seq = ++analyzeSeq, box = $("facts"); box.replaceChildren();
+  if (!repo) return;
+  box.append(el("span", "reading the repository and running its tests..."));
+  try {
+    const a = await api("/api/analyze", {repo});
+    if (seq !== analyzeSeq) return;
+    box.replaceChildren(...[
+      `repo: ${a.name}`, `language: ${a.language}`, `version: ${a.commit.slice(0, 10)}`,
+      `${a.sources.length} source files`, `${a.tests.length} test files`, `tests: ${a.baseline.status.toUpperCase()}, ${a.baseline.detail}`,
+    ].map(t => el("span", t)));
+  } catch (e) { if (seq === analyzeSeq) box.replaceChildren(el("span", "could not read it: " + e.message)); }
+}
+
+/* ---------- rendering ---------- */
+function renderMarkdown(text, target) {
+  target.replaceChildren();
+  let list = null, code = null;
+  const inline = (node, s) => s.split(/(`[^`]+`)/).forEach(part => {
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) node.append(el("code", part.slice(1, -1)));
+    else node.append(document.createTextNode(part.replace(/\*\*/g, "")));
+  });
+  for (const line of text.split("\n")) {
+    if (line.startsWith("```")) { if (code) code = null; else { code = el("pre", ""); target.append(code); list = null; } continue; }
+    if (code) { code.textContent += line + "\n"; continue; }
+    let m;
+    if ((m = line.match(/^#{1,4}\s+(.*)/))) { const h = el("h4"); inline(h, m[1]); target.append(h); list = null; }
+    else if ((m = line.match(/^\s*(\d+)\.\s+(.*)/)) || (m = line.match(/^\s*([-*])\s+(.*)/))) {
+      const tag = /\d/.test(m[1]) ? "OL" : "UL";
+      if (!list || list.tagName !== tag) { list = el(tag.toLowerCase()); if (tag === "OL") list.start = Number(m[1]); target.append(list); }
+      const li = el("li"); inline(li, m[2]); list.append(li);
+    } else if (line.trim()) {
+      if (list && /^\s/.test(line)) inline(list.lastChild, " " + line.trim());
+      else { const p = el("p"); inline(p, line); target.append(p); list = null; }
+    }
+  }
+}
+function renderPatch(patch) {
+  const pre = $("patch"); pre.replaceChildren();
+  for (const line of patch.split("\n")) {
+    const cls = line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@") || line.startsWith("diff ") ? "meta"
+      : line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "";
+    pre.append(el("span", line + "\n", cls));
+  }
+}
+function renderDraft(d) {
+  $("title").textContent = d.title; renderMarkdown(d.instruction, $("instruction")); renderPatch(d.patch);
+  $("tests").replaceChildren(...Object.entries(d.tests).flatMap(([p, c]) => [el("p", p, "note"), el("pre", c)]));
+}
+function checkRows(proofs, defs) {
+  return defs.map(([key, label, text]) => {
+    const p = proofs[key], status = p ? p.status : "waiting";
+    const row = el("div", undefined, "check");
+    row.append(el("span", p ? SHOW[status] || status : "waiting", "pill " + (p ? status : "")));
+    const body = el("div"); body.append(el("b", `${label}: ${text}`), el("small", p && p.detail ? p.detail : ""));
+    if (p && p.status === "fail" && p.tail) { const d = el("details"); d.append(el("summary", "show output"), el("pre", p.tail)); body.append(d); }
+    row.append(body); return row;
+  });
+}
+function renderMutants(job) {
+  const caught = job.mutants.filter(m => m.caught).length, n = job.mutants.length, teeth = job.proofs.tests_have_teeth;
+  $("bar").style.width = n ? (100 * caught / n) + "%" : "0";
+  let text = n ? `Tests caught ${caught} of ${n} planted bugs (${Math.round(100 * caught / n)}%).` : "Waiting for the first planted bug...";
+  if (teeth && teeth.status !== "running") text = `${teeth.status.toUpperCase()}: ${teeth.detail}. At least 60% is needed.`;
+  $("killText").textContent = text;
+  $("mutants").replaceChildren(...job.mutants.map(m => {
+    const tr = el("tr"), a = el("td"), c = el("td");
+    a.append(el("span", m.caught ? "caught" : "missed", "pill " + (m.caught ? "pass" : "fail")));
+    c.append(el("code", m.code));
+    tr.append(a, el("td", `${m.file}: ${m.change}`), c); return tr;
+  }));
+}
+function renderResult(job) {
+  const r = job.result, ok = r.status === "accepted";
+  $("verdict").replaceChildren(el("div", ok ? "ACCEPTED: this exam earned every proof." : "REJECTED: " + r.reason, "banner " + (ok ? "pass" : "fail")));
+  const box = $("package"); box.replaceChildren();
+  const history = job.attempts.length > 1 ? job.attempts.map(a => `attempt ${a.number}: ${a.outcome} (${a.detail})`).join("; ") : "";
+  if (history) box.append(el("p", history, "note"));
+  box.append(el("h3", "Saved in this folder"), el("pre", r.folder), el("h3", "Files"), el("pre", r.files.join("\n")));
+  if (r.task_toml) box.append(el("h3", "task.toml (tagged with the repository version)"), el("pre", r.task_toml));
+}
+
+/* ---------- polling ---------- */
+function paintExam(job) {
+  if (job.draft) {
+    const key = job.id + ":" + job.attempt;
+    if (shownDraft !== key) { shownDraft = key; renderDraft(job.draft); }
+    wake("s2"); wake("s3");
+  }
+  if (Object.keys(job.proofs).length) { wake("s4"); $("checks").replaceChildren(...checkRows(job.proofs, CHECKS)); }
+  if (job.proofs.tests_have_teeth) { wake("s5"); renderMutants(job); }
+  if (job.result) { wake("s6"); renderResult(job); }
+}
+function paintCheat(job) {
+  const box = $("cheatResult"); box.replaceChildren();
+  box.append(el("h3", job.label));
+  if (job.draft) box.append(el("p", job.draft.title, "note"));
+  const rows = el("div", undefined, "checks");
+  rows.append(...checkRows(job.proofs, CHECKS.concat([["tests_have_teeth", "Planted bugs", "The tests notice broken code"]])));
+  box.append(rows);
+  if (job.result) {
+    const rejected = job.result.status === "rejected";
+    box.append(el("div", rejected ? `The checker REJECTED it (failed: ${job.result.failed.join(", ")}). It was not fooled.`
+      : "The checker ACCEPTED this bad copy. The remaining tests were still strong enough.", "banner " + (rejected ? "pass" : "fail")));
+  }
+}
+async function poll() {
+  if (!activeJob) return;
+  let job;
+  try { job = await api("/api/job?id=" + activeJob); }
+  catch (e) { showError(e.message); finish(); return; }
+  (job.kind === "exam" ? paintExam : paintCheat)(job);
+  const waiting = job.state === "waiting";
+  if (waiting && $("paste").hidden) { $("prompt").value = job.prompt; $("reply").value = ""; $("paste").hidden = false; $("paste").scrollIntoView({behavior: "smooth"}); }
+  if (waiting && $("prompt").value !== job.prompt) { $("prompt").value = job.prompt; $("reply").value = ""; }
+  if (!waiting) $("paste").hidden = true;
+  $("status").textContent = ` ${job.message} (${job.seconds}s)`;
+  if (job.state === "error") showError(job.error);
+  if (["done", "error", "cancelled"].includes(job.state)) {
+    if (job.kind === "exam" && job.result && job.result.status === "accepted") { examJob = job.id; wake("cheat"); }
+    finish();
+  } else timer = setTimeout(poll, 500);
+}
+function finish() { activeJob = null; $("cancel").hidden = true; $("paste").hidden = true; setBusy(false); }
+function setBusy(busy) {
+  document.querySelectorAll("#cheats button").forEach(b => b.disabled = busy || !examJob);
+  ["mode", "recorded", "repo", "custom"].forEach(id => $(id).disabled = busy);
+  refreshChips();
+}
+function watch(id) { activeJob = id; $("cancel").hidden = false; setBusy(true); clearTimeout(timer); poll(); }
+
+/* ---------- actions ---------- */
+$("go").onclick = async () => {
+  showError(""); examJob = null; shownDraft = "";
+  ["s2", "s3", "s4", "s5", "s6", "cheat"].forEach(s => wake(s, false));
+  $("cheatResult").replaceChildren(); $("mutants").replaceChildren(); $("checks").replaceChildren(); $("bar").style.width = "0";
+  const mode = $("mode").value;
+  try {
+    const r = await api("/api/run", mode === "recorded" ? {mode, recorded_id: $("recorded").value} : {mode, repo: repoValue(), recipes: chosen});
+    watch(r.job);
+  } catch (e) { showError(e.message); }
+};
+$("cancel").onclick = () => activeJob && api("/api/cancel", {job: activeJob}).catch(e => showError(e.message));
+$("send").onclick = async () => {
+  showError("");
+  try { await api("/api/answer", {job: activeJob, reply: $("reply").value}); $("paste").hidden = true; $("prompt").value = ""; }
+  catch (e) { showError(e.message); }
+};
+$("copy").onclick = async () => {
+  $("prompt").select();
+  try { await navigator.clipboard.writeText($("prompt").value); $("copy").textContent = "Copied"; }
+  catch { document.execCommand("copy"); $("copy").textContent = "Copied"; }
+  setTimeout(() => $("copy").textContent = "Copy prompt", 1500);
+};
+$("mode").onchange = refreshMode;
+$("recorded").onchange = refreshMode;
+$("repo").onchange = refreshMode;
+$("custom").onchange = refreshMode;
+$("custom").oninput = refreshChips;
+
+(async () => {
+  try { info = await api("/api/info"); } catch (e) { showError(e.message); return; }
+  $("recorded").replaceChildren(...info.recorded.map(r => { const o = el("option", `${r.repo}: ${r.title}`); o.value = r.id; return o; }));
+  const first = info.recorded.find(r => r.id.startsWith("shop__time_window")); if (first) $("recorded").value = first.id;
+  $("repo").replaceChildren(...info.examples.map(n => { const o = el("option", n + " (example)"); o.value = n; return o; }));
+  const other = el("option", "Another folder on this computer..."); other.value = "__custom"; $("repo").append(other);
+  if (info.examples.includes("shop")) $("repo").value = "shop";
+  $("chips").replaceChildren(...info.recipes.map(r => {
+    const b = el("button", r.title, "chip"); b.type = "button"; b.dataset.id = r.id; b.setAttribute("aria-pressed", "false");
+    b.onclick = () => { chosen = chosen.includes(r.id) ? chosen.filter(x => x !== r.id) : chosen.concat(r.id).slice(-2); refreshChips(); };
+    return b;
+  }));
+  $("cheats").replaceChildren(...Object.entries(info.sabotage).map(([kind, s]) => {
+    const b = el("button", s.title, "secondary"); b.disabled = true;
+    b.onclick = async () => { showError(""); try { watch((await api("/api/sabotage", {job: examJob, kind})).job); } catch (e) { showError(e.message); } };
+    return b;
+  }));
+  const names = {shop: "Shop report", library: "Library report", "solver-shop": "Solver check: shop", "solver-library": "Solver check: library"};
+  $("reports").replaceChildren(...info.reports.map(k => { const a = el("a", names[k] || k); a.href = "/report/" + k; a.target = "_blank"; a.rel = "noopener"; return a; }));
+  if (info.recorded.length === 0) $("mode").value = "paste";
+  chosen = []; refreshMode();
+})();
+</script>
+</body>
+</html>

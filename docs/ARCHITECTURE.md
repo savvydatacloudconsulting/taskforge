@@ -34,7 +34,8 @@ repository + commit          feature recipes             AI backend
 | `package.py` | the task folder (`task.toml`, `instruction.md`, `solution/`, `tests/`, `validation/`) |
 | `report.py` | `report.md`, `report.html` (self-contained dashboard), `report.json`, built from files on disk |
 | `controls.py` | the checker's self-test: one good task and six deliberately bad ones |
-| `cli.py` | `analyze`, `recipes`, `generate`, `check`, `check-all`, `report`, `controls`, `demo` |
+| `webapp.py`, `web/index.html` | `taskforge ui`: a local page that runs the factory and checker step by step, including the copy-and-paste AI mode and the "cheat the checker" buttons (127.0.0.1 only, Host check, per-session token, one run at a time) |
+| `cli.py` | `ui`, `analyze`, `recipes`, `generate`, `solve`, `check`, `check-all`, `report`, `controls`, `demo` |
 
 ## The solver check (independent evidence of solvability)
 
