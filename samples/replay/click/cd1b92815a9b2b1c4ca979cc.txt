@@ -1,0 +1,1 @@
+["src/click/core.py::Option.__init__", "src/click/core.py::Option._validate", "src/click/core.py::Parameter.process_value", "src/click/core.py::Parameter.type_cast_value", "src/click/core.py::Parameter.handle_parse_result", "src/click/parser.py::_Option.process", "src/click/core.py::Option.add_to_parser", "src/click/core.py::Option.to_info_dict"]

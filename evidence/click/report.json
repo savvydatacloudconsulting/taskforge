@@ -1,0 +1,255 @@
+{
+  "generator": "taskforge 0.1.0",
+  "run": {
+    "repo": "click",
+    "language": "python",
+    "base_commit": "cf19179e8e2fd54c601378cec9e0d21bb12b6fb1",
+    "seed": 6,
+    "generator": "taskforge 0.1.0",
+    "seconds": 74.4,
+    "requested": 5,
+    "accepted": 5,
+    "rejected": 0,
+    "pending": 0,
+    "mean_attempts": 1.0,
+    "variation_score": 0.886,
+    "ai": {
+      "backend": "manual",
+      "calls": 0,
+      "cache_hits": 10,
+      "pending": 0,
+      "chars_in": 0,
+      "chars_out": 0
+    }
+  },
+  "records": [
+    {
+      "id": "click__dedup_merge_x_eligibility_gate__05",
+      "status": "accepted",
+      "title": "Add `consistent` options that merge identical repeats and reject conflicting ones",
+      "recipes": [
+        "dedup_merge",
+        "eligibility_gate"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (21 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (21 tests)",
+        "nothing_breaks": "the full suite passes; all 2434 original tests still pass",
+        "tests_have_teeth": "tests caught 10 of 12 broken versions (83%)"
+      },
+      "kill_rate": 0.833,
+      "mutants": 12,
+      "nearest_task": "click__quantity_limit_x_audit_trail__01",
+      "nearest_distance": 0.836,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 15.418359369999962
+        }
+      ]
+    },
+    {
+      "id": "click__eligibility_gate__04",
+      "status": "accepted",
+      "title": "Let click.File refuse \"-\" so a parameter requires a real file path",
+      "recipes": [
+        "eligibility_gate"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (25 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (25 tests)",
+        "nothing_breaks": "the full suite passes; all 2434 original tests still pass",
+        "tests_have_teeth": "tests caught 5 of 5 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 5,
+      "nearest_task": "click__validation_rejection__02",
+      "nearest_distance": 0.8435,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 13.983669266999641
+        }
+      ]
+    },
+    {
+      "id": "click__quantity_limit_x_audit_trail__01",
+      "status": "accepted",
+      "title": "Limit the number of subcommands in a Group and keep a registration history",
+      "recipes": [
+        "quantity_limit",
+        "audit_trail"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (12 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+        "nothing_breaks": "the full suite passes; all 2434 original tests still pass",
+        "tests_have_teeth": "tests caught 12 of 12 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 12,
+      "nearest_task": null,
+      "nearest_distance": 1.0,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 14.013075156999548
+        }
+      ]
+    },
+    {
+      "id": "click__threshold_effect__03",
+      "status": "accepted",
+      "title": "Spread out definition lists once a description reaches a line-count threshold",
+      "recipes": [
+        "threshold_effect"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (10 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (10 tests)",
+        "nothing_breaks": "the full suite passes; all 2434 original tests still pass",
+        "tests_have_teeth": "tests caught 9 of 12 broken versions (75%)"
+      },
+      "kill_rate": 0.75,
+      "mutants": 12,
+      "nearest_task": "click__quantity_limit_x_audit_trail__01",
+      "nearest_distance": 0.8638,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 11.227287989000615
+        }
+      ]
+    },
+    {
+      "id": "click__validation_rejection__02",
+      "status": "accepted",
+      "title": "Reject malformed format lists when constructing click.DateTime",
+      "recipes": [
+        "validation_rejection"
+      ],
+      "attempts": 1,
+      "reason": "",
+      "proofs": {
+        "fails_before": "pass",
+        "passes_after": "pass",
+        "nothing_breaks": "pass",
+        "tests_have_teeth": "pass"
+      },
+      "details": {
+        "fails_before": "feature tests fail on the original repository (23 failing)",
+        "passes_after": "feature tests pass with the solution, identical across 3 runs (23 tests)",
+        "nothing_breaks": "the full suite passes; all 2434 original tests still pass",
+        "tests_have_teeth": "tests caught 9 of 9 broken versions (100%)"
+      },
+      "kill_rate": 1.0,
+      "mutants": 9,
+      "nearest_task": "click__quantity_limit_x_audit_trail__01",
+      "nearest_distance": 0.9096,
+      "history": [
+        {
+          "number": 1,
+          "outcome": "accepted",
+          "detail": "all proofs passed",
+          "seconds": 11.915193076001742
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "accepted": 5,
+    "rejected": 0,
+    "acceptance_rate": 1.0,
+    "mean_attempts": 1.0,
+    "mean_kill_rate": 0.917,
+    "variation_score": 0.886
+  },
+  "variation": {
+    "ids": [
+      "click__dedup_merge_x_eligibility_gate__05",
+      "click__eligibility_gate__04",
+      "click__quantity_limit_x_audit_trail__01",
+      "click__threshold_effect__03",
+      "click__validation_rejection__02"
+    ],
+    "matrix": [
+      [
+        0.0,
+        0.8815,
+        0.836,
+        0.9161,
+        0.8884
+      ],
+      [
+        0.8815,
+        0.0,
+        0.9204,
+        0.9061,
+        0.8435
+      ],
+      [
+        0.836,
+        0.9204,
+        0.0,
+        0.8638,
+        0.9096
+      ],
+      [
+        0.9161,
+        0.9061,
+        0.8638,
+        0.0,
+        0.8945
+      ],
+      [
+        0.8884,
+        0.8435,
+        0.9096,
+        0.8945,
+        0.0
+      ]
+    ],
+    "min_distance": 0.25
+  }
+}

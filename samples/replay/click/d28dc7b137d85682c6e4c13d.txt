@@ -1,0 +1,1 @@
+["src/click/core.py::Group.add_command", "src/click/core.py::_check_nested_chain", "src/click/core.py::Context.forward", "src/click/core.py::Context.invoke", "src/click/core.py::Option._validate", "src/click/types.py::Path", "src/click/types.py::File", "src/click/exceptions.py::UsageError"]

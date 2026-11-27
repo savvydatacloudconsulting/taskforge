@@ -1,0 +1,22 @@
+schema = "1"
+
+[task]
+id = "click__quantity_limit_x_audit_trail__01"
+title = "Limit the number of subcommands in a Group and keep a registration history"
+recipes = ["quantity_limit", "audit_trail"]
+
+[repo]
+name = "click"
+language = "python"
+base_commit = "cf19179e8e2fd54c601378cec9e0d21bb12b6fb1"
+snapshot = false
+
+[run]
+test_command = "{python} -m pytest -q"
+pythonpath = "src"
+timeout_seconds = 120
+feature_tests = ["tests/test_tf_quantity_limit_x_audit_trail_01.py"]
+
+[meta]
+generator = "taskforge 0.1.0"
+attempts = 1

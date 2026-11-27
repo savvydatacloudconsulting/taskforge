@@ -1,0 +1,1 @@
+["src/click/exceptions.py", "src/click/core.py::Group.resolve_command", "src/click/core.py::Group.format_commands", "src/click/core.py::Command.format_options", "src/click/formatting.py"]

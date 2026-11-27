@@ -1,0 +1,178 @@
+=== TITLE ===
+Reject malformed format lists when constructing click.DateTime
+=== INSTRUCTION ===
+## Background
+`click.DateTime(formats=...)` accepts anything as `formats`. Mistakes such as passing one string instead of a list, or writing a format with no `%` directive, are not reported when the type is declared. They only show up later as confusing conversion failures for the end user. These mistakes should be rejected as soon as the type is constructed.
+
+## Requirements
+1. Passing a single `str` as `formats` (including the empty string) raises `TypeError`.
+2. Every item in `formats` must be a `str`. A non-string item raises `TypeError` naming its zero-based index and its type.
+3. A format must not end with an incomplete directive, meaning a `%` with nothing after it. The pair `%%` is a literal percent sign and is matched from left to right, so `"%Y%"` and `"%%%"` are incomplete, while `"%Y%%"` is not. A violation raises `ValueError`.
+4. A format must contain at least one directive other than the literal `%%`. For example `""`, `"YYYY-MM-DD"` and `"%%Y"` raise `ValueError`, while `"%%%Y"` is accepted.
+5. The same format string must not be listed more than once. A repeat raises `ValueError`. Comparison is exact, so `"%y"` and `"%Y"` are different formats.
+6. Items are checked in list order and the error is raised for the first offending item. For a single item, the rules apply in the order of requirements 2, 3, 4, 5.
+7. Valid input behaves as before. `formats=None` and an empty list or tuple still select the three default formats, and a valid list or tuple is stored unchanged in the `formats` attribute.
+
+## Public interface
+`click.DateTime(formats: Sequence[str] | None = None)` keeps its signature. The exception messages are exactly as follows, where `{fmt!r}` is the `repr` of the offending format, `{index}` is its position and `{type_name}` is `type(item).__name__`.
+
+| Case | Exception | Message |
+| --- | --- | --- |
+| single string | `TypeError` | `'formats' must be a sequence of format strings, not a single string.` |
+| non-string item | `TypeError` | `Format at index {index} must be a string, not {type_name}.` |
+| incomplete directive | `ValueError` | `Format {fmt!r} ends with an incomplete directive.` |
+| no directive | `ValueError` | `Format {fmt!r} has no '%' directive.` |
+| repeated format | `ValueError` | `Format {fmt!r} is listed more than once.` |
+
+## Examples
+```python
+click.DateTime(["%d/%m/%Y", "%Y-%m-%d"])  # accepted
+
+click.DateTime("%Y-%m-%d")
+# TypeError: 'formats' must be a sequence of format strings, not a single string.
+
+click.DateTime(["%Y-%m-%d", "dd/mm/yyyy"])
+# ValueError: Format 'dd/mm/yyyy' has no '%' directive.
+```
+=== EDIT solution src/click/types.py ===
+<<<<<<< SEARCH
+    def __init__(self, formats: cabc.Sequence[str] | None = None):
+        self.formats = formats or [
+=======
+    def __init__(self, formats: cabc.Sequence[str] | None = None):
+        if isinstance(formats, str):
+            raise TypeError(
+                "'formats' must be a sequence of format strings, not a single string."
+            )
+
+        seen: set[str] = set()
+
+        for index, fmt in enumerate(formats or ()):
+            if not isinstance(fmt, str):
+                raise TypeError(
+                    f"Format at index {index} must be a string,"
+                    f" not {type(fmt).__name__}."
+                )
+
+            # "%%" is a literal percent sign, not a directive.
+            directives = fmt.replace("%%", "")
+
+            if directives.endswith("%"):
+                raise ValueError(f"Format {fmt!r} ends with an incomplete directive.")
+
+            if "%" not in directives:
+                raise ValueError(f"Format {fmt!r} has no '%' directive.")
+
+            if fmt in seen:
+                raise ValueError(f"Format {fmt!r} is listed more than once.")
+
+            seen.add(fmt)
+
+        self.formats = formats or [
+>>>>>>> REPLACE
+=== FILE test tests/test_tf_validation_rejection_02.py ===
+import pytest
+
+import click
+
+SINGLE_STRING = "'formats' must be a sequence of format strings, not a single string."
+
+
+def _error(exc_type, formats):
+    with pytest.raises(exc_type) as excinfo:
+        click.DateTime(formats)
+
+    return str(excinfo.value)
+
+
+@pytest.mark.parametrize("formats", ["%Y-%m-%d", ""])
+def test_single_string_rejected(formats):
+    assert _error(TypeError, formats) == SINGLE_STRING
+
+
+@pytest.mark.parametrize(
+    ("formats", "index", "type_name"),
+    [
+        ([None], 0, "NoneType"),
+        (["%Y", 5], 1, "int"),
+        (("%Y", "%m", b"%d"), 2, "bytes"),
+    ],
+)
+def test_non_string_item_rejected(formats, index, type_name):
+    expected = f"Format at index {index} must be a string, not {type_name}."
+    assert _error(TypeError, formats) == expected
+
+
+@pytest.mark.parametrize("fmt", ["%", "%Y%", "%%%", "date%", "%Y-%%%"])
+def test_incomplete_directive_rejected(fmt):
+    expected = f"Format {fmt!r} ends with an incomplete directive."
+    assert _error(ValueError, [fmt]) == expected
+
+
+@pytest.mark.parametrize("fmt", ["", "YYYY-MM-DD", "%%", "%%Y", "100%%"])
+def test_format_without_directive_rejected(fmt):
+    expected = f"Format {fmt!r} has no '%' directive."
+    assert _error(ValueError, ["%Y", fmt]) == expected
+
+
+def test_literal_percent_boundaries():
+    formats = ["%%%Y", "%Y%%"]
+    date_type = click.DateTime(formats)
+
+    assert date_type.formats is formats
+    assert date_type.convert("%2024", None, None).year == 2024
+    assert date_type.convert("2023%", None, None).year == 2023
+    assert _error(ValueError, [*formats, "%%%%"]) == (
+        "Format '%%%%' has no '%' directive."
+    )
+
+
+def test_repeated_format_rejected():
+    assert _error(ValueError, ["%Y", "%m", "%Y"]) == (
+        "Format '%Y' is listed more than once."
+    )
+    assert _error(ValueError, ("%d/%m", "%d/%m")) == (
+        "Format '%d/%m' is listed more than once."
+    )
+
+
+def test_comparison_of_repeats_is_exact():
+    formats = ("%y", "%Y")
+
+    assert click.DateTime(formats).formats is formats
+    assert _error(ValueError, [*formats, "%y"]) == (
+        "Format '%y' is listed more than once."
+    )
+
+
+@pytest.mark.parametrize(
+    ("formats", "exc_type", "message"),
+    [
+        (["bad", 1], ValueError, "Format 'bad' has no '%' directive."),
+        ([1, "bad"], TypeError, "Format at index 0 must be a string, not int."),
+        (
+            ["%Y", "%Y", "%"],
+            ValueError,
+            "Format '%Y' is listed more than once.",
+        ),
+        (
+            ["%Y", "x%", "%Y"],
+            ValueError,
+            "Format 'x%' ends with an incomplete directive.",
+        ),
+    ],
+)
+def test_first_offending_item_is_reported(formats, exc_type, message):
+    assert _error(exc_type, formats) == message
+
+
+def test_error_raised_at_declaration():
+    with pytest.raises(ValueError) as excinfo:
+
+        @click.command()
+        @click.option("--when", type=click.DateTime(["dd/mm/yyyy"]))
+        def cli(when):
+            pass
+
+    assert str(excinfo.value) == "Format 'dd/mm/yyyy' has no '%' directive."
+=== END ===

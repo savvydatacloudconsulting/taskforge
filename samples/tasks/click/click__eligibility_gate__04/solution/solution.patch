@@ -1,0 +1,53 @@
+diff --git a/src/click/types.py b/src/click/types.py
+index b6e98a9..97c4614 100644
+--- a/src/click/types.py
++++ b/src/click/types.py
+@@ -938,6 +938,11 @@ class File(ParamType[t.IO[t.Any]]):
+ 
+     See :ref:`file-args` for more information.
+ 
++    Set ``allow_dash`` to ``False`` to reject ``-`` and require a file path.
++
++    .. versionchanged:: 8.6
++        Added the ``allow_dash`` parameter.
++
+     .. versionchanged:: 2.0
+         Added the ``atomic`` parameter.
+     """
+@@ -950,6 +955,7 @@ class File(ParamType[t.IO[t.Any]]):
+     errors: str | None
+     lazy: bool | None
+     atomic: bool
++    allow_dash: bool
+ 
+     def __init__(
+         self,
+@@ -958,12 +964,14 @@ class File(ParamType[t.IO[t.Any]]):
+         errors: str | None = "strict",
+         lazy: bool | None = None,
+         atomic: bool = False,
++        allow_dash: bool = True,
+     ) -> None:
+         self.mode = mode
+         self.encoding = encoding
+         self.errors = errors
+         self.lazy = lazy
+         self.atomic = atomic
++        self.allow_dash = allow_dash
+ 
+     def to_info_dict(self) -> FileInfoDict:
+         return {
+@@ -990,6 +998,13 @@ class File(ParamType[t.IO[t.Any]]):
+         if _is_file_like(value):
+             return value
+ 
++        if not self.allow_dash and os.fsdecode(value) == "-":
++            self.fail(
++                _("'-' is not allowed: a file path is required."),
++                param,
++                ctx,
++            )
++
+         try:
+             lazy = self.resolve_lazy_flag(value)
+ 

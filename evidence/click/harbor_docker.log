@@ -1,0 +1,12 @@
+0.25.0
+click__dedup_merge_x_eligibility_gate__05        nop     reward 0.0    expected 0.0  OK
+click__dedup_merge_x_eligibility_gate__05        oracle  reward 1.0    expected 1.0  OK
+click__eligibility_gate__04                      nop     reward 0.0    expected 0.0  OK
+click__eligibility_gate__04                      oracle  reward 1.0    expected 1.0  OK
+click__quantity_limit_x_audit_trail__01          nop     reward 0.0    expected 0.0  OK
+click__quantity_limit_x_audit_trail__01          oracle  reward 1.0    expected 1.0  OK
+click__threshold_effect__03                      nop     reward 0.0    expected 0.0  OK
+click__threshold_effect__03                      oracle  reward 1.0    expected 1.0  OK
+click__validation_rejection__02                  nop     reward 0.0    expected 0.0  OK
+click__validation_rejection__02                  oracle  reward 1.0    expected 1.0  OK
+all checks passed

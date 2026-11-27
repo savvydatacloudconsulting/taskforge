@@ -1,0 +1,288 @@
+[
+  {
+    "task": "click__dedup_merge_x_eligibility_gate__05",
+    "nop": {
+      "reward": 0.0,
+      "fail_to_pass": {
+        "total": 21,
+        "passed": 0,
+        "not_passed": [
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_comparison_happens_before_type_conversion",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflict_runs_no_callbacks",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflicting_repeats_are_rejected[args0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflicting_repeats_are_rejected[args1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflicting_repeats_are_rejected[args2]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_envvar_and_default_do_not_conflict",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_error_type",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_identical_repeats_are_merged[args0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_identical_repeats_are_merged[args1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_identical_repeats_are_merged[args2]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_nargs_compares_whole_group",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_not_consistent_keeps_last_value",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_one_consistent_switch_guards_the_group[args0---lower]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_one_consistent_switch_guards_the_group[args1---upper]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_opposite_flags_are_rejected[args0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_opposite_flags_are_rejected[args1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_repeated_flag_is_merged[args0-True\\n]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_repeated_flag_is_merged[args1-True\\n]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_repeated_flag_is_merged[args2-False\\n]"
+        ]
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 1
+      }
+    },
+    "oracle": {
+      "reward": 1.0,
+      "fail_to_pass": {
+        "total": 21,
+        "passed": 21,
+        "not_passed": []
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 0
+      }
+    },
+    "ok": true
+  },
+  {
+    "task": "click__eligibility_gate__04",
+    "nop": {
+      "reward": 0.0,
+      "fail_to_pass": {
+        "total": 25,
+        "passed": 0,
+        "not_passed": [
+          "tests/test_tf_eligibility_gate_04.py::test_allow_dash_attribute",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_from_other_sources[option_attrs0-env0]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_from_other_sources[option_attrs1-env1]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[a]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[r]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[rb]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[w]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[wb]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_still_reads_stdin_when_allowed",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-0-False]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-0-None]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-0-True]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-1-False]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-1-None]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-1-True]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[value2-False]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[value2-None]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[value2-True]",
+          "tests/test_tf_eligibility_gate_04.py::test_open_file_object_passed_through",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[-.txt]",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[./-]",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[data.txt]",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[my-data.txt]",
+          "tests/test_tf_eligibility_gate_04.py::test_rejected_dash_creates_no_file[False]",
+          "tests/test_tf_eligibility_gate_04.py::test_rejected_dash_creates_no_file[True]"
+        ]
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 1
+      }
+    },
+    "oracle": {
+      "reward": 1.0,
+      "fail_to_pass": {
+        "total": 25,
+        "passed": 25,
+        "not_passed": []
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 0
+      }
+    },
+    "ok": true
+  },
+  {
+    "task": "click__quantity_limit_x_audit_trail__01",
+    "nop": {
+      "reward": 0.0,
+      "fail_to_pass": {
+        "total": 12,
+        "passed": 0,
+        "not_passed": [
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_aliases_count_as_separate_names",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_commands_count_but_are_not_recorded",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_over_the_limit",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_decorators_respect_the_limit",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_history_without_limit_and_snapshot",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_and_history_are_per_group",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_of_ten_rejects_the_eleventh_command",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_negative_limit_is_invalid",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_other_failures_are_not_recorded",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_removing_a_command_frees_a_slot",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_replacing_is_allowed_when_full",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_zero_limit_rejects_everything"
+        ]
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 1
+      }
+    },
+    "oracle": {
+      "reward": 1.0,
+      "fail_to_pass": {
+        "total": 12,
+        "passed": 12,
+        "not_passed": []
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 0
+      }
+    },
+    "ok": true
+  },
+  {
+    "task": "click__threshold_effect__03",
+    "nop": {
+      "reward": 0.0,
+      "fail_to_pass": {
+        "total": 10,
+        "passed": 0,
+        "not_passed": [
+          "tests/test_tf_threshold_effect_03.py::test_compact_just_below_threshold",
+          "tests/test_tf_threshold_effect_03.py::test_empty_descriptions",
+          "tests/test_tf_threshold_effect_03.py::test_long_term_line_is_not_counted",
+          "tests/test_tf_threshold_effect_03.py::test_none_never_spreads",
+          "tests/test_tf_threshold_effect_03.py::test_paragraph_blank_lines_are_counted",
+          "tests/test_tf_threshold_effect_03.py::test_separator_is_empty_inside_section_and_decided_per_call",
+          "tests/test_tf_threshold_effect_03.py::test_single_row_gets_no_surrounding_blank_lines",
+          "tests/test_tf_threshold_effect_03.py::test_spreads_all_rows_at_threshold",
+          "tests/test_tf_threshold_effect_03.py::test_threshold_below_one_is_rejected[-1]",
+          "tests/test_tf_threshold_effect_03.py::test_threshold_below_one_is_rejected[0]"
+        ]
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 1
+      }
+    },
+    "oracle": {
+      "reward": 1.0,
+      "fail_to_pass": {
+        "total": 10,
+        "passed": 10,
+        "not_passed": []
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 0
+      }
+    },
+    "ok": true
+  },
+  {
+    "task": "click__validation_rejection__02",
+    "nop": {
+      "reward": 0.0,
+      "fail_to_pass": {
+        "total": 23,
+        "passed": 0,
+        "not_passed": [
+          "tests/test_tf_validation_rejection_02.py::test_comparison_of_repeats_is_exact",
+          "tests/test_tf_validation_rejection_02.py::test_error_raised_at_declaration",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats0-ValueError-Format 'bad' has no '%' directive.]",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats1-TypeError-Format at index 0 must be a string, not int.]",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats2-ValueError-Format '%Y' is listed more than once.]",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats3-ValueError-Format 'x%' ends with an incomplete directive.]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[%%Y]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[%%]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[100%%]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[YYYY-MM-DD]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%%%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%Y%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%Y-%%%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[date%]",
+          "tests/test_tf_validation_rejection_02.py::test_literal_percent_boundaries",
+          "tests/test_tf_validation_rejection_02.py::test_non_string_item_rejected[formats0-0-NoneType]",
+          "tests/test_tf_validation_rejection_02.py::test_non_string_item_rejected[formats1-1-int]",
+          "tests/test_tf_validation_rejection_02.py::test_non_string_item_rejected[formats2-2-bytes]",
+          "tests/test_tf_validation_rejection_02.py::test_repeated_format_rejected",
+          "tests/test_tf_validation_rejection_02.py::test_single_string_rejected[%Y-%m-%d]",
+          "tests/test_tf_validation_rejection_02.py::test_single_string_rejected[]"
+        ]
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 1
+      }
+    },
+    "oracle": {
+      "reward": 1.0,
+      "fail_to_pass": {
+        "total": 23,
+        "passed": 23,
+        "not_passed": []
+      },
+      "pass_to_pass": {
+        "total": 2434,
+        "passed": 2434,
+        "not_passed": []
+      },
+      "exit_codes": {
+        "regression": 0,
+        "feature": 0
+      }
+    },
+    "ok": true
+  }
+]

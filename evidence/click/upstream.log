@@ -1,0 +1,5 @@
+click__dedup_merge_x_eligibility_gate__05    new (tests fail upstream)
+click__eligibility_gate__04                  new (tests fail upstream)
+click__quantity_limit_x_audit_trail__01      new (tests fail upstream)
+click__threshold_effect__03                  new (tests fail upstream)
+click__validation_rejection__02              new (tests fail upstream)

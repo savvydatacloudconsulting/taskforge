@@ -1,0 +1,196 @@
+{
+  "task_id": "click__validation_rejection__02",
+  "accepted": true,
+  "seconds": 11.83,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (2434 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 2434,
+        "SKIPPED": 4,
+        "XFAIL": 1
+      },
+      "seconds": 6.67
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (23 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 23
+        },
+        "seconds": 0.33,
+        "tail": "d_format_rejected\nFAILED tests/test_tf_validation_rejection_02.py::test_comparison_of_repeats_is_exact\nFAILED tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats0-ValueError-Format 'bad' has no '%' directive.]\nFAILED tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats1-TypeError-Format at index 0 must be a string, not int.]\nFAILED tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats2-ValueError-Format '%Y' is listed more than once.]\nFAILED tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats3-ValueError-Format 'x%' ends with an incomplete directive.]\nFAILED tests/test_tf_validation_rejection_02.py::test_error_raised_at_declaration\n23 failed in 0.09s\n",
+        "failing_tests": [
+          "tests/test_tf_validation_rejection_02.py::test_comparison_of_repeats_is_exact",
+          "tests/test_tf_validation_rejection_02.py::test_error_raised_at_declaration",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats0-ValueError-Format 'bad' has no '%' directive.]",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats1-TypeError-Format at index 0 must be a string, not int.]",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats2-ValueError-Format '%Y' is listed more than once.]",
+          "tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats3-ValueError-Format 'x%' ends with an incomplete directive.]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[%%Y]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[%%]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[100%%]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[YYYY-MM-DD]",
+          "tests/test_tf_validation_rejection_02.py::test_format_without_directive_rejected[]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%%%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%Y%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%Y-%%%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[%]",
+          "tests/test_tf_validation_rejection_02.py::test_incomplete_directive_rejected[date%]",
+          "tests/test_tf_validation_rejection_02.py::test_literal_percent_boundaries",
+          "tests/test_tf_validation_rejection_02.py::test_non_string_item_rejected[formats0-0-NoneType]",
+          "tests/test_tf_validation_rejection_02.py::test_non_string_item_rejected[formats1-1-int]",
+          "tests/test_tf_validation_rejection_02.py::test_non_string_item_rejected[formats2-2-bytes]",
+          "tests/test_tf_validation_rejection_02.py::test_repeated_format_rejected",
+          "tests/test_tf_validation_rejection_02.py::test_single_string_rejected[%Y-%m-%d]",
+          "tests/test_tf_validation_rejection_02.py::test_single_string_rejected[]"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (23 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 23
+            },
+            "seconds": 0.25
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 23
+            },
+            "seconds": 0.23
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 23
+            },
+            "seconds": 0.23
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 2434 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 2457,
+          "SKIPPED": 4,
+          "XFAIL": 1
+        },
+        "seconds": 6.94
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 9 of 9 broken versions (100%)",
+      "evidence": {
+        "mutants": 9,
+        "killed": 9,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 9,
+        "required": 0.6,
+        "mutant_list": [
+          {
+            "file": "src/click/types.py",
+            "site": 4,
+            "line": 565,
+            "change": "line 565: negated if condition",
+            "caught": true,
+            "code": "if directives.endswith(\"%\"):"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 0,
+            "line": 548,
+            "change": "line 548: negated if condition",
+            "caught": true,
+            "code": "if isinstance(formats, str):"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 1,
+            "line": 555,
+            "change": "line 555: logic Or -> And",
+            "caught": true,
+            "code": "for index, fmt in enumerate(formats or ()):"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 7,
+            "line": 571,
+            "change": "line 571: negated if condition",
+            "caught": true,
+            "code": "if fmt in seen:"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 5,
+            "line": 568,
+            "change": "line 568: negated if condition",
+            "caught": true,
+            "code": "if \"%\" not in directives:"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 6,
+            "line": 568,
+            "change": "line 568: comparison NotIn -> In",
+            "caught": true,
+            "code": "if \"%\" not in directives:"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 2,
+            "line": 556,
+            "change": "line 556: negated if condition",
+            "caught": true,
+            "code": "if not isinstance(fmt, str):"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 8,
+            "line": 571,
+            "change": "line 571: comparison In -> NotIn",
+            "caught": true,
+            "code": "if fmt in seen:"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 3,
+            "line": 556,
+            "change": "line 556: removed 'not'",
+            "caught": true,
+            "code": "if not isinstance(fmt, str):"
+          }
+        ]
+      }
+    }
+  ]
+}

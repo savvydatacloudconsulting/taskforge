@@ -1,0 +1,248 @@
+=== TITLE ===
+Spread out definition lists once a description reaches a line-count threshold
+=== INSTRUCTION ===
+## Background
+
+`HelpFormatter.write_dl` renders definition lists (used for options and commands) with every entry directly below the previous one. This is compact and readable while descriptions are short, but once some descriptions wrap over several lines it becomes hard to see where one entry ends and the next begins.
+
+Add an opt-in threshold to `write_dl`: once any description in the list is at least that many lines tall, the whole list is rendered with a blank line between entries.
+
+## Requirements
+
+1. `HelpFormatter.write_dl` accepts a new optional argument `spread_threshold`. When it is `None` (the default), the output is the same as today, however long the descriptions are.
+2. A description's line count is the number of lines it occupies after being wrapped to the width of the second column (that width is computed as it is today).
+3. If at least one row has a line count **greater than or equal to** `spread_threshold`, one empty line is written between **every** pair of consecutive rows in that list, including pairs of short rows and pairs that come before the long row.
+4. If every row has a line count below `spread_threshold` (for example exactly `spread_threshold - 1`), the output is the same as without a threshold.
+5. The separator is a completely empty line (just a newline, with no indentation), even inside an indented section. No empty line is added before the first row or after the last row.
+6. Line counting rules:
+   - When a term is too wide for the first column and its description starts on the following line, the term's line does not count.
+   - Blank lines between paragraphs inside a description do count.
+   - A row with an empty description has a line count of 0. It is still separated from its neighbours when the list is spread out.
+7. The decision is made separately for each `write_dl` call.
+8. A `spread_threshold` lower than 1 raises `ValueError`, and nothing is written to the formatter.
+
+## Public interface
+
+```python
+HelpFormatter.write_dl(
+    rows,
+    col_max: int = 30,
+    col_spacing: int = 2,
+    spread_threshold: int | None = None,
+) -> None
+```
+
+- Raises `ValueError` with the message `spread_threshold must be at least 1.` when `spread_threshold` is less than 1.
+
+## Examples
+
+```python
+formatter = click.HelpFormatter(width=40)
+long_text = " ".join(["abcdefghi"] * 9)  # wraps to 3 lines here
+formatter.write_dl(
+    [("-a", "Short."), ("-b", long_text), ("-c", "Tiny.")],
+    spread_threshold=3,
+)
+print(formatter.getvalue(), end="")
+```
+
+Output:
+
+```text
+-a  Short.
+
+-b  abcdefghi abcdefghi abcdefghi
+    abcdefghi abcdefghi abcdefghi
+    abcdefghi abcdefghi abcdefghi
+
+-c  Tiny.
+```
+
+With `spread_threshold=4`, the same rows are printed without any empty lines.
+=== EDIT solution src/click/formatting.py ===
+<<<<<<< SEARCH
+        col_max: int = 30,
+        col_spacing: int = 2,
+    ) -> None:
+        """Writes a definition list into the buffer.  This is how options
+        and commands are usually formatted.
+
+        :param rows: a list of two item tuples for the terms and values.
+        :param col_max: the maximum width of the first column.
+        :param col_spacing: the number of spaces between the first and
+                            second column.
+        """
+        rows = list(rows)
+        widths = measure_table(rows)
+        if len(widths) != 2:
+            raise TypeError("Expected two columns for definition list")
+
+        first_col = min(widths[0], col_max) + col_spacing
+
+        for first, second in iter_rows(rows, len(widths)):
+            self.write(f"{'':>{self.current_indent}}{first}")
+=======
+        col_max: int = 30,
+        col_spacing: int = 2,
+        spread_threshold: int | None = None,
+    ) -> None:
+        """Writes a definition list into the buffer.  This is how options
+        and commands are usually formatted.
+
+        :param rows: a list of two item tuples for the terms and values.
+        :param col_max: the maximum width of the first column.
+        :param col_spacing: the number of spaces between the first and
+                            second column.
+        :param spread_threshold: if any value wraps to at least this many
+                                 lines, separate all rows with an empty
+                                 line.
+
+        .. versionchanged:: 8.5.0
+            Added the ``spread_threshold`` parameter.
+        """
+        if spread_threshold is not None and spread_threshold < 1:
+            raise ValueError("spread_threshold must be at least 1.")
+
+        rows = list(rows)
+        widths = measure_table(rows)
+        if len(widths) != 2:
+            raise TypeError("Expected two columns for definition list")
+
+        first_col = min(widths[0], col_max) + col_spacing
+        text_width = max(self.width - first_col - 2, 10)
+        table = list(iter_rows(rows, len(widths)))
+        wrapped = [
+            wrap_text(second, text_width, preserve_paragraphs=True).splitlines()
+            for first, second in table
+        ]
+        spread = spread_threshold is not None and any(
+            len(lines) >= spread_threshold for lines in wrapped
+        )
+
+        for index, ((first, second), lines) in enumerate(zip(table, wrapped)):
+            if spread and index:
+                self.write("\n")
+
+            self.write(f"{'':>{self.current_indent}}{first}")
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+                self.write(" " * (first_col + self.current_indent))
+
+            text_width = max(self.width - first_col - 2, 10)
+            wrapped_text = wrap_text(second, text_width, preserve_paragraphs=True)
+            lines = wrapped_text.splitlines()
+
+            if lines:
+=======
+                self.write(" " * (first_col + self.current_indent))
+
+            if lines:
+>>>>>>> REPLACE
+=== FILE test tests/test_tf_threshold_effect_03.py ===
+import pytest
+
+import click
+
+WORD = "abcdefghi"
+# With a width of 40 and two character terms, three words fit on each line.
+LINE = " ".join([WORD] * 3)
+
+
+def words(count):
+    return " ".join([WORD] * count)
+
+
+def render(rows, **kwargs):
+    formatter = click.HelpFormatter(width=40)
+    formatter.write_dl(rows, **kwargs)
+    return formatter.getvalue()
+
+
+def test_spreads_all_rows_at_threshold():
+    rows = [("-a", "Short."), ("-b", words(9)), ("-c", "Tiny."), ("-d", "End.")]
+
+    assert render(rows, spread_threshold=3) == (
+        f"-a  Short.\n\n-b  {LINE}\n    {LINE}\n    {LINE}\n\n-c  Tiny.\n\n-d  End.\n"
+    )
+
+
+def test_compact_just_below_threshold():
+    rows = [("-a", "Short."), ("-b", words(6)), ("-c", "Tiny.")]
+    expected = f"-a  Short.\n-b  {LINE}\n    {LINE}\n-c  Tiny.\n"
+
+    assert render(rows, spread_threshold=3) == expected
+    assert render(rows, spread_threshold=2) == (
+        f"-a  Short.\n\n-b  {LINE}\n    {LINE}\n\n-c  Tiny.\n"
+    )
+
+
+def test_none_never_spreads():
+    rows = [("-a", words(12)), ("-b", "Tiny.")]
+
+    assert render(rows, spread_threshold=None) == (
+        f"-a  {LINE}\n    {LINE}\n    {LINE}\n    {LINE}\n-b  Tiny.\n"
+    )
+
+
+def test_long_term_line_is_not_counted():
+    rows = [("--very-long-name", words(4)), ("-b", "Tiny.")]
+    pad = " " * 12
+    two_words = words(2)
+    first = f"--very-long-name\n{pad}{two_words}\n{pad}{two_words}\n"
+    second = "-b" + " " * 10 + "Tiny.\n"
+
+    assert render(rows, col_max=10, spread_threshold=3) == first + second
+    assert render(rows, col_max=10, spread_threshold=2) == first + "\n" + second
+
+
+def test_paragraph_blank_lines_are_counted():
+    rows = [("-a", "One.\n\nTwo."), ("-b", "Tiny.")]
+
+    assert render(rows, spread_threshold=3) == (
+        "-a  One.\n    \n    Two.\n\n-b  Tiny.\n"
+    )
+    assert render(rows, spread_threshold=4) == (
+        "-a  One.\n    \n    Two.\n-b  Tiny.\n"
+    )
+
+
+def test_separator_is_empty_inside_section_and_decided_per_call():
+    formatter = click.HelpFormatter(width=40)
+
+    with formatter.section("Options"):
+        formatter.write_dl(
+            [("-a", words(9)), ("-b", "Tiny.")],
+            spread_threshold=3,
+        )
+
+    with formatter.section("Commands"):
+        formatter.write_dl([("go", "Go."), ("up", "Up.")], spread_threshold=3)
+
+    assert formatter.getvalue() == (
+        f"Options:\n  -a  {LINE}\n      {LINE}\n      {LINE}\n\n  -b  Tiny.\n"
+        "\nCommands:\n  go  Go.\n  up  Up.\n"
+    )
+
+
+def test_single_row_gets_no_surrounding_blank_lines():
+    assert render([("-a", words(6))], spread_threshold=1) == (
+        f"-a  {LINE}\n    {LINE}\n"
+    )
+
+
+def test_empty_descriptions():
+    assert render([("-a", ""), ("-b", "")], spread_threshold=1) == "-a\n-b\n"
+    assert render([("-a", ""), ("-b", "Tiny."), ("-c", "")], spread_threshold=1) == (
+        "-a\n\n-b  Tiny.\n\n-c\n"
+    )
+
+
+@pytest.mark.parametrize("threshold", [0, -1])
+def test_threshold_below_one_is_rejected(threshold):
+    formatter = click.HelpFormatter(width=40)
+
+    with pytest.raises(ValueError, match="spread_threshold must be at least 1."):
+        formatter.write_dl([("-a", "Short.")], spread_threshold=threshold)
+
+    assert formatter.getvalue() == ""
+=== END ===

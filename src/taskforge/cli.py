@@ -14,12 +14,13 @@ from . import __version__
 from .checker import PROOF_ORDER, Checker, check_package
 from .controls import render_matrix, run_controls
 from .generator import Factory
+from .harbor import ExportError, HarborConfig, export_task, simulate_task, upstream_check
 from .llm import LLMError, make_backend
 from .package import TaskPackage
 from .recipes import RECIPES
 from .report import PROOF_LABELS, write_reports
 from .repo import detect_language, load_context, resolve_repo
-from .runner import Workspace
+from .runner import PatchError, Workspace
 from .solver import solve_all
 from .webapp import App, make_server
 
@@ -168,6 +169,67 @@ def cmd_solve(a) -> int:
     return 0
 
 
+def _task_dirs(folder: Path) -> list[Path]:
+    if (folder / "task.toml").exists():
+        return [folder]
+    found = sorted(p.parent for p in folder.glob("*/task.toml"))
+    if not found:
+        raise FileNotFoundError(f"no task.toml found in {folder}")
+    return found
+
+
+def cmd_export(a) -> int:
+    """Write Harbor 0.25 task folders for accepted task packages."""
+    config = HarborConfig.load(Path(a.config))
+    summaries, bad = {}, 0
+    for task_dir in _task_dirs(Path(a.folder)):
+        try:
+            out, summary = export_task(task_dir, Path(a.repo), config, Path(a.out))
+        except (ExportError, PatchError) as e:
+            _say(f"FAILED   {task_dir.name}: {e}")
+            bad += 1
+            continue
+        summaries[out.name] = summary
+        _say(f"exported {out.name}: {summary['fail_to_pass']} fail-to-pass, "
+             f"{summary['existing_tests_passing_before']} existing tests kept passing")
+    if a.evidence:
+        Path(a.evidence).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.evidence).write_text(json.dumps(summaries, indent=2) + "\n", encoding="utf-8", newline="\n")
+    return 0 if bad == 0 else 1
+
+
+def cmd_simulate(a) -> int:
+    """Rehearse Harbor's nop and oracle checks without Docker."""
+    results, bad = [], 0
+    _say("local rehearsal of the grading script (no Docker; not a Harbor run)")
+    for task_dir in _task_dirs(Path(a.folder)):
+        r = simulate_task(task_dir, Path(a.repo))
+        results.append(r)
+        bad += 0 if r["ok"] else 1
+        _say(f"{r['task'][:44]:44s} nop {r['nop']['reward']:<6} oracle {r['oracle']['reward']:<6} "
+             f"{'OK' if r['ok'] else 'WRONG'}")
+    _say(f"{len(results) - bad} of {len(results)} tasks give nop 0.0 and oracle 1.0")
+    if a.evidence:
+        Path(a.evidence).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.evidence).write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8", newline="\n")
+    return 0 if bad == 0 else 1
+
+
+def cmd_upstream(a) -> int:
+    """Check that no task's feature already exists in a newer upstream commit."""
+    results, bad = [], 0
+    for task_dir in _task_dirs(Path(a.folder)):
+        r = upstream_check(task_dir, Path(a.repo), a.ref)
+        results.append(r)
+        bad += 0 if r["new_tests_fail_upstream"] else 1
+        verdict = "new (tests fail upstream)" if r["new_tests_fail_upstream"] else "ALREADY EXISTS UPSTREAM"
+        _say(f"{r['task'][:44]:44s} {verdict}")
+    if a.evidence:
+        Path(a.evidence).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.evidence).write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8", newline="\n")
+    return 0 if bad == 0 else 1
+
+
 def cmd_report(a) -> int:
     paths = write_reports(Path(a.out_dir))
     for k, p in paths.items():
@@ -305,6 +367,26 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-calls", type=int, help="stop after this many AI calls")
     p.add_argument("--attempts", type=int, default=1, help="attempts per task; later attempts see the failing test output")
     p.set_defaults(fn=cmd_solve)
+
+    p = sub.add_parser("export", help="write Harbor 0.25 task folders for accepted task packages")
+    p.add_argument("folder", help="a task package, or a folder of them")
+    p.add_argument("--repo", required=True, help="path to the repository the tasks were made for")
+    p.add_argument("--config", required=True, help="Harbor settings, for example configs/click.json")
+    p.add_argument("--out", required=True, help="folder for the Harbor tasks")
+    p.add_argument("--evidence", help="also write the test counts to this JSON file")
+    p.set_defaults(fn=cmd_export)
+
+    for name, fn, helptext in (
+        ("simulate", cmd_simulate, "rehearse Harbor's nop and oracle checks without Docker"),
+        ("upstream", cmd_upstream, "check that the features do not exist in a newer upstream commit"),
+    ):
+        p = sub.add_parser(name, help=helptext)
+        p.add_argument("folder", help="a task folder, or a folder of them")
+        p.add_argument("--repo", required=True, help="path to the repository")
+        p.add_argument("--evidence", help="write the results to this JSON file")
+        if name == "upstream":
+            p.add_argument("--ref", required=True, help="full hash of the newer upstream commit")
+        p.set_defaults(fn=fn)
 
     p = sub.add_parser("report", help="rebuild report.md / report.html / report.json from a run folder")
     p.add_argument("out_dir")

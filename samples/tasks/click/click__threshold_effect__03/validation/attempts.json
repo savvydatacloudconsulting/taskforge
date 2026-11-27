@@ -1,0 +1,19 @@
+{
+  "task_id": "click__threshold_effect__03",
+  "status": "accepted",
+  "title": "Spread out definition lists once a description reaches a line-count threshold",
+  "recipes": [
+    "threshold_effect"
+  ],
+  "reason": "",
+  "nearest_task": "click__quantity_limit_x_audit_trail__01",
+  "nearest_distance": 0.8638,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 11.227287989000615
+    }
+  ]
+}

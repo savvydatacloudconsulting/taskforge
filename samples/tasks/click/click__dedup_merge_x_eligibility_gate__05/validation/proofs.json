@@ -1,0 +1,221 @@
+{
+  "task_id": "click__dedup_merge_x_eligibility_gate__05",
+  "accepted": true,
+  "seconds": 15.29,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (2434 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 2434,
+        "SKIPPED": 4,
+        "XFAIL": 1
+      },
+      "seconds": 6.67
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (21 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 21
+        },
+        "seconds": 1.29,
+        "tail": "_05.py::test_opposite_flags_are_rejected[args0]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_opposite_flags_are_rejected[args1]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_one_consistent_switch_guards_the_group[args0---lower]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_one_consistent_switch_guards_the_group[args1---upper]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflict_runs_no_callbacks\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_envvar_and_default_do_not_conflict\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs0]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs1]\n21 failed in 1.01s\n",
+        "failing_tests": [
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_comparison_happens_before_type_conversion",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflict_runs_no_callbacks",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflicting_repeats_are_rejected[args0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflicting_repeats_are_rejected[args1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflicting_repeats_are_rejected[args2]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_envvar_and_default_do_not_conflict",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_error_type",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_identical_repeats_are_merged[args0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_identical_repeats_are_merged[args1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_identical_repeats_are_merged[args2]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_nargs_compares_whole_group",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_not_consistent_keeps_last_value",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_one_consistent_switch_guards_the_group[args0---lower]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_one_consistent_switch_guards_the_group[args1---upper]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_opposite_flags_are_rejected[args0]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_opposite_flags_are_rejected[args1]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_repeated_flag_is_merged[args0-True\\n]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_repeated_flag_is_merged[args1-True\\n]",
+          "tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_repeated_flag_is_merged[args2-False\\n]"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (21 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 21
+            },
+            "seconds": 0.3
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 21
+            },
+            "seconds": 0.27
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 21
+            },
+            "seconds": 0.31
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 2434 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 2455,
+          "SKIPPED": 4,
+          "XFAIL": 1
+        },
+        "seconds": 7.41
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 10 of 12 broken versions (83%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 10,
+        "survived": [
+          "src/click/core.py: line 3002: flipped False -> True",
+          "src/click/parser.py: line 177: flipped False -> True"
+        ],
+        "kill_rate": 0.833,
+        "available_sites": 17,
+        "required": 0.6,
+        "mutant_list": [
+          {
+            "file": "src/click/core.py",
+            "site": 2,
+            "line": 3192,
+            "change": "line 3192: logic And -> Or",
+            "caught": true,
+            "code": "if self.consistent and (self.multiple or self.count):"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 1,
+            "line": 3192,
+            "change": "line 3192: negated if condition",
+            "caught": true,
+            "code": "if self.consistent and (self.multiple or self.count):"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 0,
+            "line": 3002,
+            "change": "line 3002: flipped False -> True",
+            "caught": false,
+            "code": "consistent: bool = False,"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 12,
+            "line": 186,
+            "change": "line 186: comparison Eq -> NotEq",
+            "caught": true,
+            "code": "stored = self.const if self.action == \"store_const\" else value"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 11,
+            "line": 186,
+            "change": "line 186: negated conditional-expression condition",
+            "caught": true,
+            "code": "stored = self.const if self.action == \"store_const\" else value"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 6,
+            "line": 177,
+            "change": "line 177: comparison Eq -> NotEq",
+            "caught": true,
+            "code": "obj.name == self.dest and getattr(obj, \"consistent\", False)"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 1,
+            "line": 173,
+            "change": "line 173: logic Or -> And",
+            "caught": true,
+            "code": "if self.dest not in state.opts or state.opts[self.dest] == value:"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 5,
+            "line": 177,
+            "change": "line 177: logic And -> Or",
+            "caught": true,
+            "code": "obj.name == self.dest and getattr(obj, \"consistent\", False)"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 0,
+            "line": 173,
+            "change": "line 173: negated if condition",
+            "caught": true,
+            "code": "if self.dest not in state.opts or state.opts[self.dest] == value:"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 8,
+            "line": 180,
+            "change": "line 180: constant 0 -> 1",
+            "caught": true,
+            "code": "name = self.obj.opts[0]"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 7,
+            "line": 177,
+            "change": "line 177: flipped False -> True",
+            "caught": false,
+            "code": "obj.name == self.dest and getattr(obj, \"consistent\", False)"
+          },
+          {
+            "file": "src/click/parser.py",
+            "site": 3,
+            "line": 173,
+            "change": "line 173: comparison Eq -> NotEq",
+            "caught": true,
+            "code": "if self.dest not in state.opts or state.opts[self.dest] == value:"
+          }
+        ]
+      }
+    }
+  ]
+}

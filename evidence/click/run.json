@@ -1,0 +1,22 @@
+{
+  "repo": "click",
+  "language": "python",
+  "base_commit": "cf19179e8e2fd54c601378cec9e0d21bb12b6fb1",
+  "seed": 6,
+  "generator": "taskforge 0.1.0",
+  "seconds": 74.4,
+  "requested": 5,
+  "accepted": 5,
+  "rejected": 0,
+  "pending": 0,
+  "mean_attempts": 1.0,
+  "variation_score": 0.886,
+  "ai": {
+    "backend": "manual",
+    "calls": 0,
+    "cache_hits": 10,
+    "pending": 0,
+    "chars_in": 0,
+    "chars_out": 0
+  }
+}

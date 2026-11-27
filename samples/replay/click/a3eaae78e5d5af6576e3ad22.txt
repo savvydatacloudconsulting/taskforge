@@ -1,0 +1,278 @@
+=== TITLE ===
+Add `consistent` options that merge identical repeats and reject conflicting ones
+=== INSTRUCTION ===
+## Background
+When a single-value option or a flag is given several times on the command line, Click silently keeps the last occurrence. For some options (a target environment, `--force/--no-force`, a set of feature switches) a contradicting repeat is almost certainly a mistake, while an identical repeat (for example from a shell alias that already adds the option) is harmless. Options need an opt-in setting that merges identical repeats and rejects conflicting ones.
+
+## Requirements
+1. `click.Option` (and therefore `@click.option`) accepts a keyword argument `consistent`, default `False`. It is stored as the attribute `Option.consistent`. When no involved option is consistent, behaviour is unchanged: the last occurrence wins.
+2. Only options that store one value are eligible. Creating an option with `consistent=True` together with `multiple=True` or `count=True` raises `TypeError`.
+3. For a consistent option that takes a value, repeated command-line occurrences with identical values are merged: the command receives that value as if it had been given once. This holds for any mix of the option's spellings (`-m fast`, `-mfast`, `--mode fast`, `--mode=fast`).
+4. Values are compared as the strings typed on the command line, before type conversion. With `type=int`, `--level 1 --level 01` is a conflict. With `nargs` greater than 1, the whole group of strings of one occurrence must equal that of the other.
+5. For flags, what is compared is the value the occurrence stores, not its spelling. Repeating the same flag, or mixing its aliases, is merged. Giving both sides of a boolean pair such as `--color/--no-color` is a conflict, in either order.
+6. A conflict is a usage error (`click.BadOptionUsage`, exit code 2). It is raised while the command line is parsed, so neither parameter callbacks nor the command callback run.
+7. Several options may share one parameter name (feature switches). They share one stored value. A later occurrence that would change that value is rejected if the later option, or any option that appeared earlier on the command line for the same name, is consistent. So marking only one switch of a pair is enough to reject the pair in either order.
+8. Only command-line occurrences are compared. A value from an environment variable or a default never conflicts with the command line, which takes precedence as before.
+
+## Public interface
+- `click.Option(..., consistent: bool = False)`, also usable as `@click.option(..., consistent=True)`.
+- Invalid combination: `TypeError` with the message `'consistent' is not valid with 'multiple' or 'count'.`
+- Conflict: `click.BadOptionUsage` with the message `Option '<name>' was given conflicting values.`, where `<name>` is the first declared name of the option whose occurrence caused the conflict. For `--color/--no-color` this is `--color` whichever side comes last.
+
+## Examples
+```python
+@click.command()
+@click.option("-m", "--mode", consistent=True)
+def cli(mode):
+    click.echo(mode)
+```
+
+- `cli -m fast --mode=fast` prints `fast`.
+- `cli --mode fast --mode slow` exits with code 2 and reports `Option '-m' was given conflicting values.`
+
+```python
+@click.command()
+@click.option("--upper", "transform", flag_value="upper", consistent=True)
+@click.option("--lower", "transform", flag_value="lower")
+def cli(transform):
+    click.echo(transform)
+```
+
+- `cli --upper --upper` prints `upper`.
+- `cli --upper --lower` reports `Option '--lower' was given conflicting values.`
+- `cli --lower --upper` reports `Option '--upper' was given conflicting values.`
+=== EDIT solution src/click/core.py ===
+<<<<<<< SEARCH
+        show_envvar: bool = False,
+        deprecated: bool | str = False,
+        **attrs: t.Any,
+    ) -> None:
+=======
+        show_envvar: bool = False,
+        deprecated: bool | str = False,
+        consistent: bool = False,
+        **attrs: t.Any,
+    ) -> None:
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        self.show_envvar = show_envvar
+
+        # Phase 5: validate. Raises on illegal kwarg combinations.
+=======
+        self.show_envvar = show_envvar
+        self.consistent = consistent
+
+        # Phase 5: validate. Raises on illegal kwarg combinations.
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        if self.nargs == -1:
+            raise TypeError("nargs=-1 is not supported for options.")
+=======
+        if self.nargs == -1:
+            raise TypeError("nargs=-1 is not supported for options.")
+        if self.consistent and (self.multiple or self.count):
+            raise TypeError("'consistent' is not valid with 'multiple' or 'count'.")
+>>>>>>> REPLACE
+=== EDIT solution src/click/parser.py ===
+<<<<<<< SEARCH
+    def process(self, value: t.Any, state: _ParsingState) -> None:
+        if self.action == "store":
+            state.opts[self.dest] = value  # type: ignore
+=======
+    def _check_consistent(self, value: t.Any, state: _ParsingState) -> None:
+        """Reject an occurrence that would change the value already stored for
+        :attr:`dest`, if a ``consistent`` option is involved.
+        """
+        if self.dest not in state.opts or state.opts[self.dest] == value:
+            return
+
+        if any(
+            obj.name == self.dest and getattr(obj, "consistent", False)
+            for obj in (*state.order, self.obj)
+        ):
+            name = self.obj.opts[0]
+            message = _("Option {name!r} was given conflicting values.")
+            raise BadOptionUsage(name, message.format(name=name))
+
+    def process(self, value: t.Any, state: _ParsingState) -> None:
+        if self.action in ("store", "store_const"):
+            stored = self.const if self.action == "store_const" else value
+            self._check_consistent(stored, state)
+
+        if self.action == "store":
+            state.opts[self.dest] = value  # type: ignore
+>>>>>>> REPLACE
+=== FILE test tests/test_tf_dedup_merge_x_eligibility_gate_05.py ===
+import pytest
+
+import click
+
+
+def _conflict(name):
+    return f"Option '{name}' was given conflicting values."
+
+
+def _mode_cli(**attrs):
+    @click.command()
+    @click.option("-m", "--mode", **attrs)
+    def cli(mode):
+        click.echo(repr(mode))
+
+    return cli
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--mode", "fast"],
+        ["--mode", "fast", "--mode", "fast"],
+        ["-m", "fast", "--mode=fast", "-mfast"],
+    ],
+)
+def test_identical_repeats_are_merged(runner, args):
+    result = runner.invoke(_mode_cli(consistent=True), args)
+    assert result.exit_code == 0
+    assert result.output == "'fast'\n"
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--mode", "fast", "--mode", "slow"],
+        ["-m", "fast", "-m", "fast", "--mode=slow"],
+        ["--mode", "fast", "--mode", "FAST"],
+    ],
+)
+def test_conflicting_repeats_are_rejected(runner, args):
+    result = runner.invoke(_mode_cli(consistent=True), args)
+    assert result.exit_code == 2
+    assert _conflict("-m") in result.output
+
+
+def test_error_type(runner):
+    result = runner.invoke(
+        _mode_cli(consistent=True),
+        ["--mode", "a", "--mode", "b"],
+        standalone_mode=False,
+    )
+    assert isinstance(result.exception, click.BadOptionUsage)
+    assert result.exception.format_message() == _conflict("-m")
+
+
+def test_not_consistent_keeps_last_value(runner):
+    cli = _mode_cli(consistent=False)
+    result = runner.invoke(cli, ["--mode", "fast", "--mode", "slow"])
+    assert result.exit_code == 0
+    assert result.output == "'slow'\n"
+    assert cli.params[0].consistent is False
+
+
+def test_comparison_happens_before_type_conversion(runner):
+    cli = _mode_cli(type=int, consistent=True)
+    result = runner.invoke(cli, ["--mode", "1", "--mode", "1"])
+    assert result.output == "1\n"
+    result = runner.invoke(cli, ["--mode", "1", "--mode", "01"])
+    assert result.exit_code == 2
+    assert _conflict("-m") in result.output
+
+
+def test_nargs_compares_whole_group(runner):
+    @click.command()
+    @click.option("--point", nargs=2, type=int, consistent=True)
+    def cli(point):
+        click.echo(repr(point))
+
+    result = runner.invoke(cli, ["--point", "1", "2", "--point", "1", "2"])
+    assert result.exit_code == 0
+    assert result.output == "(1, 2)\n"
+    result = runner.invoke(cli, ["--point", "1", "2", "--point", "1", "3"])
+    assert result.exit_code == 2
+    assert _conflict("--point") in result.output
+
+
+@pytest.mark.parametrize(
+    ("args", "expect"),
+    [
+        (["--color", "--color"], "True\n"),
+        (["--color", "-c"], "True\n"),
+        (["--no-color", "--no-color"], "False\n"),
+    ],
+)
+def test_repeated_flag_is_merged(runner, args, expect):
+    @click.command()
+    @click.option("--color/--no-color", "-c", consistent=True)
+    def cli(color):
+        click.echo(repr(color))
+
+    result = runner.invoke(cli, args)
+    assert result.exit_code == 0
+    assert result.output == expect
+
+
+@pytest.mark.parametrize(
+    "args", [["--color", "--no-color"], ["--no-color", "--color"]]
+)
+def test_opposite_flags_are_rejected(runner, args):
+    @click.command()
+    @click.option("--color/--no-color", consistent=True)
+    def cli(color):
+        click.echo(repr(color))
+
+    result = runner.invoke(cli, args)
+    assert result.exit_code == 2
+    assert _conflict("--color") in result.output
+
+
+@pytest.mark.parametrize(
+    ("args", "last"),
+    [(["--upper", "--lower"], "--lower"), (["--lower", "--upper"], "--upper")],
+)
+def test_one_consistent_switch_guards_the_group(runner, args, last):
+    @click.command()
+    @click.option("--upper", "transform", flag_value="upper", consistent=True)
+    @click.option("--lower", "transform", flag_value="lower")
+    def cli(transform):
+        click.echo(transform)
+
+    result = runner.invoke(cli, args)
+    assert result.exit_code == 2
+    assert _conflict(last) in result.output
+
+    result = runner.invoke(cli, [args[0], args[0]])
+    assert result.exit_code == 0
+    assert result.output == args[0][2:] + "\n"
+
+
+def test_conflict_runs_no_callbacks(runner):
+    calls = []
+
+    def record(ctx, param, value):
+        calls.append(value)
+        return value
+
+    @click.command()
+    @click.option("--mode", consistent=True, callback=record, is_eager=True)
+    def cli(mode):
+        calls.append("command")
+
+    result = runner.invoke(cli, ["--mode", "a", "--mode", "b"])
+    assert result.exit_code == 2
+    assert calls == []
+
+
+def test_envvar_and_default_do_not_conflict(runner):
+    cli = _mode_cli(consistent=True, envvar="TF_MODE", default="auto")
+    result = runner.invoke(cli, ["--mode", "fast"], env={"TF_MODE": "slow"})
+    assert result.exit_code == 0
+    assert result.output == "'fast'\n"
+    result = runner.invoke(cli, [], env={"TF_MODE": "slow"})
+    assert result.output == "'slow'\n"
+
+
+@pytest.mark.parametrize("attrs", [{"multiple": True}, {"count": True}])
+def test_ineligible_options_are_rejected(attrs):
+    with pytest.raises(
+        TypeError, match="'consistent' is not valid with 'multiple' or 'count'."
+    ):
+        click.Option(["--item"], consistent=True, **attrs)
+=== END ===

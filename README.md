@@ -20,7 +20,49 @@ evidence that a task is clear and solvable by someone other than its author, and
 Tasks that cannot earn all four proofs are retried with the evidence (up to 3 attempts) and then rejected. Tasks that
 differ only in names, strings or numbers are rejected as **cosmetic duplicates**, so variation is real.
 
-## Results (all reproducible offline, no API key)
+## Track 1 results: pallets/click
+
+Starting commit: click **8.5.1**, `cf19179e8e2fd54c601378cec9e0d21bb12b6fb1`, where its 2,434 tests pass (24 skipped,
+1 expected failure). Harbor 0.25 task folders are in [`samples/harbor/click/`](samples/harbor/click).
+
+| Task | The new feature | New tests (fail before, pass after) | Planted bugs caught |
+|---|---|---|---|
+| `quantity_limit_x_audit_trail__01` | cap a group's subcommands and keep a registration history | 12 | 12 of 12 |
+| `validation_rejection__02` | `click.DateTime` rejects malformed format lists | 23 | 9 of 9 |
+| `threshold_effect__03` | `write_dl` spreads rows once a description is tall enough | 10 | 9 of 12 |
+| `eligibility_gate__04` | `click.File(allow_dash=False)` requires a real file path | 25 | 5 of 5 |
+| `dedup_merge_x_eligibility_gate__05` | `consistent=True` options merge repeats and reject conflicts | 21 | 10 of 12 |
+
+| Check | Result |
+|---|---|
+| Four proofs | 5 of 5 accepted on the first attempt; variation score 0.886 |
+| Features absent upstream | the new tests of all 5 fail on click's main branch of 26 Nov 2026 |
+| Harbor 0.25.0 loads the folders | 5 of 5 |
+| **`harbor run` in Docker** ([results](evidence/click/harbor_docker.json)) | **10 of 10 runs as required**: `nop` 0.0 and `oracle` 1.0 for all 5 tasks, with all 2,434 existing tests passing in every run |
+| Grading rehearsal without Docker (`taskforge simulate`) | untouched repository 0.0 and reference solution 1.0 for 5 of 5 |
+| Failure cases ([report](evidence/click/negative_controls.md)) | 14 of 15 deliberately damaged copies rejected; the one accepted shows a limit of the mutation check |
+
+The AI answers came from Claude Sonnet through Claude Code sub-agents (manual backend, 10 requests, no hand edits) and
+are recorded in `samples/replay/click/`.
+
+### Reproduce it (Linux or WSL, no API key)
+
+```bash
+bash scripts/reproduce_click.sh     # fetches click, replays the AI answers, re-checks, exports, rehearses grading
+```
+
+With Docker (and its compose plugin) running and `pip install "harbor==0.25.*"`:
+
+```bash
+bash scripts/harbor_check.sh        # harbor run -a nop must score 0.0 and -a oracle 1.0 for every task
+```
+
+The script uses `harbor` from your PATH, or the one named in the `HARBOR` variable. The run recorded here took about
+7 minutes with Harbor 0.25.0 and Docker 29.1.3 on Ubuntu 24.04 (WSL2).
+
+To generate new tasks with a live model, follow the same setup, then use `--backend claude` or `--backend api`.
+
+## Results on the example repositories (offline, no API key)
 
 | What | Result |
 |---|---|
@@ -30,7 +72,7 @@ differ only in names, strings or numbers are rejected as **cosmetic duplicates**
 | Checker self-test (`taskforge controls`) | the 1 good control task is accepted and **all 6 bad ones are rejected for the right reason** |
 | Offline re-check of the shop packages (`check-all`) | **8 of 8** re-accepted from the saved files alone |
 | JavaScript repository (`examples/jscart`) | goes through the same proofs; mutation testing is skipped (Python only), and reported as skipped |
-| Test suite | **103 tests pass** (`evidence/pytest.txt`), including the checker's control tasks and the factory loop with scripted AI answers |
+| Test suite | **112 tests pass** (`evidence/pytest.txt`), including the checker's control tasks, the factory loop with scripted AI answers and the Harbor grading |
 
 Evidence lives in `evidence/` and the generated task packages in `samples/tasks/`. See
 [docs/LIMITATIONS.md](docs/LIMITATIONS.md) for how the samples were made and what is not covered. Read that file first.
@@ -112,16 +154,19 @@ de-duplication, rule stacking) can be combined, so tasks differ in behaviour and
 
 ```
 src/taskforge/   the factory (stdlib only)       tests/      test-suite incl. the checker's control tasks
-examples/        shop, library (Python), jscart  samples/    task packages + recorded AI answers (replay)
+examples/        shop, library (Python), jscart  samples/    task packages, Harbor folders, recorded AI answers
 evidence/        reports, logs, control tasks    docs/       architecture, package format, limitations, demo script
+configs/         Harbor settings for click       scripts/    reproduce click, run Harbor's checks, failure cases
 ```
 
 ## Honest notes
 
-- The sample tasks were written by independent AI agents (each saw only its prompt) through the `manual` backend, then
-  verified by the factory. The live `claude` and `api` backends are implemented but only tested with mocks here.
-- The checker proves behaviour, not that an instruction is unambiguous; the isolation is throw-away folders, not a
-  container; large-repository mode is untested at scale. Full list in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+- The sample tasks were written by independent AI agents (each told to read only its prompt) through the `manual`
+  backend, then verified by the factory. The live `claude` and `api` backends are implemented but only tested with mocks
+  here. Claude Code was also used to build the project.
+- The checker proves behaviour, not that an instruction is unambiguous; the factory's isolation is throw-away folders,
+  not a container; large-repository mode has been run on click only. Full list in
+  [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Licence
 

@@ -11,6 +11,7 @@ The checker never talks to an AI model, so anyone can re-run it offline.
 
 from __future__ import annotations
 
+import ast
 import random
 import time
 from dataclasses import dataclass, field, asdict
@@ -249,6 +250,18 @@ class Checker:
         rng = random.Random(f"{self.seed}:{task.task_id}")
         rng.shuffle(pool)
         chosen = pool[: self.max_mutants]
+        # Control run: mutants are re-printed from the syntax tree. If the re-printed but UNCHANGED code
+        # already fails the tests, every mutant would look "caught", so the result would mean nothing.
+        originals = {path: src for path, _, _, _, src in chosen}
+        for path, src in originals.items():
+            ws.write_files({path: ast.unparse(ast.parse(src)) + "\n"})
+        control = ws.run_feature_tests(files, timeout=self.mutant_timeout)
+        ws.write_files(originals)
+        if not control.ok:
+            return ProofResult("tests_have_teeth", FAIL,
+                               "the tests fail on a re-printed but unchanged copy of the solution, so broken versions "
+                               "cannot be judged (tests that depend on source text or line numbers are not allowed)",
+                               {"tail": control.tail(800)})
         killed, survived, invalid = 0, [], 0
         mutants: list[dict] = []
         for path, idx, lineno, desc, original in chosen:

@@ -28,9 +28,9 @@ IGNORE_DIRS = {
     "taskforge_out",
 }
 SECRET_RE = re.compile(r"(KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)", re.I)
-MAX_OUTPUT = 200_000
+MAX_OUTPUT = 4_000_000  # large suites print one summary line per test; keep them all
 FIXED_DATE = "2000-01-01T00:00:00+00:00"
-OUTCOME_RE = re.compile(r"^(PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)\s+(\S+)", re.M)
+OUTCOME_RE = re.compile(r"^(PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS)[ \t]+(\S.*?)[ \t]*$", re.M)
 
 
 class PatchError(RuntimeError):
@@ -106,10 +106,11 @@ def scrub_paths(text: str, cwd: Path) -> str:
     for raw, repl in ((str(cwd), "<repo>"), (home, "~")):
         for variant in {raw, raw.replace("\\", "/"), raw.replace("\\", "\\\\")}:
             text = text.replace(variant, repl)
-    return text
+    # pytest's temporary folders carry the user name and a run counter
+    return re.sub(r"pytest-of-[^\\/\s'\"]+([\\/]+)pytest-\d+", r"pytest-of-user\1pytest-0", text)
 
 
-def run_tokens(tokens: list[str], cwd: Path, timeout: int) -> RunResult:
+def run_tokens(tokens: list[str], cwd: Path, timeout: int, extra_env: dict[str, str] | None = None) -> RunResult:
     exe = tokens[0]
     if not os.path.isabs(exe):
         found = shutil.which(exe)
@@ -118,7 +119,7 @@ def run_tokens(tokens: list[str], cwd: Path, timeout: int) -> RunResult:
     start = time.monotonic()
     try:
         p = subprocess.run(
-            tokens, cwd=str(cwd), env=clean_env(), stdin=subprocess.DEVNULL,
+            tokens, cwd=str(cwd), env={**clean_env(), **(extra_env or {})}, stdin=subprocess.DEVNULL,
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
         )
         out = scrub_paths((p.stdout or "") + (p.stderr or ""), cwd)
@@ -130,9 +131,23 @@ def run_tokens(tokens: list[str], cwd: Path, timeout: int) -> RunResult:
         return RunResult(" ".join(tokens), 127, f"command not found: {e}", time.monotonic() - start)
 
 
+def _node_id(rest: str) -> str:
+    """The node id at the start of a summary line. Parametrised ids may contain spaces and even
+    " - ", so cut the trailing failure message only where the [parameter] brackets are closed."""
+    if rest.startswith("["):  # "SKIPPED [1] file:line: reason" has no node id
+        return rest.split()[0]
+    start = 0
+    while (cut := rest.find(" - ", start)) != -1:
+        head = rest[:cut]
+        if "[" not in head or head.endswith("]"):
+            return head
+        start = cut + 1
+    return rest
+
+
 def parse_outcomes(output: str) -> dict[str, str]:
     """Map pytest node ids to PASSED/FAILED/... from a ``-rA`` summary."""
-    return {m.group(2): m.group(1) for m in OUTCOME_RE.finditer(output)}
+    return {_node_id(m.group(2)): m.group(1) for m in OUTCOME_RE.finditer(output)}
 
 
 # ---------------------------------------------------------------- git helpers
@@ -285,8 +300,18 @@ class Workspace:
         return text if text.endswith("\n") or not text else text + "\n"
 
     # running
-    def run(self, tokens: list[str], timeout: int | None = None) -> RunResult:
-        return run_tokens(tokens, self.dir, timeout or self.repo.timeout)
+    def env(self) -> dict[str, str]:
+        """Extra environment for commands run in this workspace."""
+        if not self.repo.pythonpath:
+            return {}
+        return {"PYTHONPATH": str(self.dir / safe_relpath(self.repo.pythonpath))}
+
+    def run(self, tokens: list[str], timeout: int | None = None,
+            extra_env: dict[str, str] | None = None) -> RunResult:
+        env = self.env()
+        for key, value in (extra_env or {}).items():
+            env[key] = os.pathsep.join([value, env[key]]) if key == "PYTHONPATH" and key in env else value
+        return run_tokens(tokens, self.dir, timeout or self.repo.timeout, env)
 
     def run_setup(self) -> RunResult | None:
         if not self.repo.setup_command:

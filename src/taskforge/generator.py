@@ -5,22 +5,24 @@ from __future__ import annotations
 import json
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Callable
 
 from . import __version__
 from .checker import CheckReport, Checker
+from .edits import EditError, apply_blocks, parse_blocks
 from .llm import DEFAULT_SYSTEM, Backend, BudgetExceeded, LLMError, NeedsAnswer
 from .package import RepoConfig, TaskPackage
 from .patchutil import is_test_path, parse_patch, safe_relpath
 from .recipes import Plan, plan_batch
-from .repo import RepoContext, load_context, render_context
+from .repo import RepoContext, load_context, render_context, render_selection
 from .runner import PatchError, Workspace
 from .variation import MIN_DISTANCE, Signature, batch_score, nearest, signature
 
-MARKER_RE = re.compile(r"^=== (TITLE|INSTRUCTION|END|FILE (solution|test) (.+?)) ===\s*$")
-MAX_FILE_CHARS = 80_000
+MARKER_RE = re.compile(r"^=== (TITLE|INSTRUCTION|END|(FILE|EDIT) (solution|test) (.+?)) ===\s*$")
+MAX_FILE_CHARS = 80_000  # for a file the AI writes out in full; edits to larger files are fine
+MAX_SELECTED = 8
 
 
 class ParseError(ValueError):
@@ -33,6 +35,7 @@ class ParsedTask:
     instruction: str
     solution_files: dict[str, str]
     test_files: dict[str, str]
+    edits: dict[str, str] = field(default_factory=dict)  # path -> SEARCH/REPLACE blocks, not yet applied
 
 
 @dataclass
@@ -80,7 +83,10 @@ def parse_response(text: str) -> ParsedTask:
             if m.group(1) in ("TITLE", "INSTRUCTION"):
                 sections.append((m.group(1), "", []))
             else:
-                sections.append((m.group(2), m.group(3).strip(), []))
+                if m.group(2) == "EDIT" and m.group(3) == "test":
+                    raise ParseError("tests must be new files: use '=== FILE test <path> ===', not EDIT")
+                kind = "edit" if m.group(2) == "EDIT" else m.group(3)
+                sections.append((kind, m.group(4).strip(), []))
         elif sections and not closed:
             sections[-1][2].append(line)
     if not sections:
@@ -88,6 +94,7 @@ def parse_response(text: str) -> ParsedTask:
     title, instruction = "", ""
     solution: dict[str, str] = {}
     tests: dict[str, str] = {}
+    edits: dict[str, str] = {}
     for kind, label, lines in sections:
         body = "\n".join(lines)
         if kind == "TITLE":
@@ -102,7 +109,28 @@ def parse_response(text: str) -> ParsedTask:
             if label in tests:
                 raise ParseError(f"test file listed twice: {label}")
             tests[label] = _strip_fence(body)
-    return ParsedTask(title, instruction, solution, tests)
+        elif kind == "edit":
+            edits[label] = edits.get(label, "") + body + "\n"  # several EDIT sections per file are fine
+    both = sorted(set(edits) & set(solution))
+    if both:
+        raise ParseError(f"{both[0]} is given both as a whole FILE and as an EDIT; use one of them")
+    return ParsedTask(title, instruction, solution, tests, edits)
+
+
+def resolve_edits(p: ParsedTask, sources: dict[str, str]) -> tuple[set[str], list[str]]:
+    """Turn EDIT sections into complete file contents. Returns the edited paths and any problems."""
+    edited: set[str] = set()
+    errors: list[str] = []
+    for path, body in p.edits.items():
+        if path not in sources:
+            errors.append(f"cannot EDIT {path}: it is not an existing source file")
+            continue
+        try:
+            p.solution_files[path] = apply_blocks(sources[path], parse_blocks(body))
+            edited.add(path)
+        except EditError as e:
+            errors.append(f"{path}: {e}")
+    return edited, errors
 
 
 def format_response(title: str, instruction: str, solution: dict[str, str], tests: dict[str, str]) -> str:
@@ -116,7 +144,8 @@ def format_response(title: str, instruction: str, solution: dict[str, str], test
     return "".join(parts)
 
 
-def validate_parsed(p: ParsedTask, repo: RepoConfig, existing_files: set[str]) -> list[str]:
+def validate_parsed(p: ParsedTask, repo: RepoConfig, existing_files: set[str],
+                    edited: set[str] | None = None) -> list[str]:
     errs: list[str] = []
     if not p.title or len(p.title) > 140:
         errs.append("TITLE must be one short line (max 140 characters)")
@@ -134,7 +163,7 @@ def validate_parsed(p: ParsedTask, repo: RepoConfig, existing_files: set[str]) -
         except ValueError as e:
             errs.append(str(e))
             continue
-        if len(content) > MAX_FILE_CHARS:
+        if len(content) > MAX_FILE_CHARS and path not in (edited or set()):
             errs.append(f"{path} is too large")
         if path.endswith(".py"):
             try:
@@ -190,9 +219,40 @@ OUTPUT_FORMAT = """\
 === END ===
 (Repeat the FILE sections as needed. No code fences around file content. No text outside the sections.)"""
 
+EDIT_OUTPUT_FORMAT = """\
+=== TITLE ===
+<one line>
+=== INSTRUCTION ===
+<markdown>
+=== EDIT solution <relative/path of an existing source file> ===
+<<<<<<< SEARCH
+<consecutive lines copied exactly, with indentation, from the current code shown above>
+=======
+<the lines that replace them>
+>>>>>>> REPLACE
+=== FILE test <relative/path> ===
+<complete new file content>
+=== END ===
+(One EDIT section may hold several SEARCH/REPLACE blocks. Each SEARCH text must occur exactly once in its file.
+Use '=== FILE solution <path> ===' with complete content only for a NEW source file. No text outside the sections.)"""
 
-def build_prompt(repo: RepoConfig, ctx: RepoContext, plan: Plan, others: list[str], suggested_test: str) -> str:
+LARGE_RULES = """\
+5. This is a large, mature library. The feature must NOT already exist in it, neither under another name nor as an
+   option of an existing function. Prefer a small, realistic request that a real user of this library could make.
+6. Change existing files with EDIT sections (see the output format); never rewrite a large file. Only edit code that is
+   shown above in full or as an excerpt. Keep type hints and docstring style consistent with the surrounding code.
+"""
+
+
+def build_prompt(repo: RepoConfig, ctx: RepoContext, plan: Plan, others: list[str], suggested_test: str,
+                 large: bool = False) -> str:
     done = "\n".join(f"- {a}" for a in others) if others else "(none)"
+    solution_rule = (
+        "change only what the feature needs, in the\n   repository's style" if large else
+        "output the COMPLETE new content of every non-test file you modify or create. Keep it focused and in the\n"
+        "   repository's style")
+    extra_rules = LARGE_RULES if large else ""
+    output_format = EDIT_OUTPUT_FORMAT if large else OUTPUT_FORMAT
     return f"""\
 # Goal
 Create ONE new feature-development task for the repository below. A task is: (1) a clear instruction another
@@ -219,17 +279,16 @@ BEHAVIOUR (different rules, data flow or interactions), not merely in names, lab
    testable), "## Public interface" (the exact names, signatures, error types and messages the tests rely on) and
    "## Examples". Do not include implementation code beyond short usage examples. The tests may only rely on what
    the instruction states.
-2. SOLUTION: output the COMPLETE new content of every non-test file you modify or create. Keep it focused and in the
-   repository's style; use only the standard library and dependencies the repository already uses. Never edit
+2. SOLUTION: {solution_rule}; use only the standard library and dependencies the repository already uses. Never edit
    existing test files. All existing behaviour must keep working.
 3. TESTS: create NEW test file(s) only. {suggested_test} Tests must be deterministic (no network, no real clock, no
    randomness), cover normal cases, boundaries and error cases, and contain at least 6 assertions overall. Each test
    must check behaviour that is NEW (it must fail on the current code).
 4. The feature must be solvable from the instruction alone and small enough for one focused change (roughly 15 to 80
    changed lines).
-
+{extra_rules}
 # Output format (exact)
-{OUTPUT_FORMAT}
+{output_format}
 """
 
 
@@ -316,23 +375,30 @@ class Factory:
         return self._ctx
 
     def _select_files(self, plan: Plan, ctx: RepoContext) -> RepoContext:
-        """Large repositories: first ask which files to change, then show those in full."""
+        """Large repositories: first ask which code matters, then show only that in full."""
+        outlines = render_context(replace(ctx), 0).full_text
         prompt = (f"Repository {self.repo.name} ({self.repo.language}). Feature idea:\n{plan.describe()}\n\n"
-                  f"{ctx.full_text}\n\nWhich 1 to 3 source files would you modify to implement a small feature of this kind? "
-                  "Answer with ONLY a JSON list of paths taken from the file tree, for example [\"src/a.py\"].")
-        paths: list[str] = []
+                  f"{outlines}\n\nWhich parts of the code would you need to read or change to implement a small feature "
+                  f"of this kind? Answer with ONLY a JSON list of up to {MAX_SELECTED} entries. Each entry is a source "
+                  "path from the file tree, or \"path::Name\" for one class, function or Class.method in it, for example "
+                  "[\"src/pkg/a.py\", \"src/pkg/b.py::Parser.parse\"]. For files longer than about 500 lines, name the "
+                  "classes or functions instead of the whole file.")
+        selected: list[str] = []
         try:
             raw = self.backend.complete(prompt, DEFAULT_SYSTEM)
-            match = re.search(r"\[.*?\]", raw, re.S)
+            match = re.search(r"\[.*\]", raw, re.S)
             if match:
-                paths = [p for p in json.loads(match.group(0)) if p in ctx.sources][:3]
+                selected = [s for s in json.loads(match.group(0))
+                            if isinstance(s, str) and s.partition("::")[0] in ctx.sources][:MAX_SELECTED]
+        except NeedsAnswer:
+            raise
         except BudgetExceeded:
             raise
         except (LLMError, ValueError, TypeError):
-            paths = []
-        if not paths:
-            paths = sorted(ctx.sources, key=lambda r: len(ctx.sources[r]))[:2]
-        return render_context(ctx, self.context_budget, force_full=paths)
+            selected = []
+        if not selected:
+            selected = sorted(ctx.sources, key=lambda r: len(ctx.sources[r]))[:2]
+        return render_selection(ctx, selected)
 
     # main loop -------------------------------------------------------------
     def run(self, n: int, only: list[str] | None = None) -> list[TaskResult]:
@@ -392,7 +458,8 @@ class Factory:
 
     def _make_task(self, task_id: str, plan: Plan, ctx: RepoContext, others: list[str]) -> TaskResult:
         result = TaskResult(task_id, plan.ids, "rejected")
-        if ctx.overflow:
+        large = ctx.overflow
+        if large:
             try:
                 ctx = self._select_files(plan, ctx)
             except NeedsAnswer:
@@ -401,10 +468,11 @@ class Factory:
         suggested = (f"Put them at `{ctx.test_dir}/test_tf_{task_id.split('__', 1)[1].replace('__', '_')}.py`."
                      if self.repo.language == "python"
                      else f"Put them in the repository's test location, with a file name starting with `tf_` or `test`.")
-        base_prompt = build_prompt(self.repo, ctx, plan, others, suggested)
+        base_prompt = build_prompt(self.repo, ctx, plan, others, suggested, large=large)
         feedback = ""
         last_raw = ""
         existing = set(ctx.tree)
+        sources = ctx.sources
         for attempt in range(1, self.max_attempts + 1):
             t0 = time.monotonic()
             self._event("attempt", number=attempt, previous=vars(result.attempts[-1]) if result.attempts else None)
@@ -429,7 +497,8 @@ class Factory:
                 result.attempts.append(Attempt(attempt, "parse_error", str(e), time.monotonic() - t0))
                 result.reason = f"unparseable AI output: {e}"
                 continue
-            errs = validate_parsed(parsed, self.repo, existing)
+            edited, errs = resolve_edits(parsed, sources)
+            errs = errs or validate_parsed(parsed, self.repo, existing, edited)
             if errs:
                 feedback = "The output broke the rules:\n- " + "\n- ".join(errs)
                 result.attempts.append(Attempt(attempt, "invalid", "; ".join(errs)[:400], time.monotonic() - t0))
@@ -462,7 +531,7 @@ class Factory:
                 language=self.repo.language, base_commit=self.repo.base_commit, test_command=self.repo.test_command,
                 snapshot=self.repo.snapshot, feature_test_command=self.repo.feature_test_command,
                 setup_command=self.repo.setup_command, timeout=self.repo.timeout, attempts=attempt,
-                generator=f"taskforge {__version__}",
+                generator=f"taskforge {__version__}", pythonpath=self.repo.pythonpath,
             )
             result.package, result.title = pkg, parsed.title
             self._event("draft", title=pkg.title, instruction=pkg.instruction, patch=pkg.solution_patch, tests=pkg.test_files)

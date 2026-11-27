@@ -1,0 +1,15 @@
+repository click @ cf19179e8e  (python, test: {python} -m pytest -q)
+baseline: PASS  original repository passes (2434 tests)
+[1/5] click__quantity_limit_x_audit_trail__01
+  -> ACCEPTED  after 1 attempt(s)
+[2/5] click__validation_rejection__02
+  -> ACCEPTED  after 1 attempt(s)
+[3/5] click__threshold_effect__03
+  -> ACCEPTED  after 1 attempt(s)
+[4/5] click__eligibility_gate__04
+  -> ACCEPTED  after 1 attempt(s)
+[5/5] click__dedup_merge_x_eligibility_gate__05
+  -> ACCEPTED  after 1 attempt(s)
+
+accepted 5 of 5 tasks (variation score 0.886); AI calls: 0
+report: ~/taskforge-env/out/click-replay/report.html

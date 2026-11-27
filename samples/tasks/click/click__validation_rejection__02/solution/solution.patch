@@ -1,0 +1,39 @@
+diff --git a/src/click/types.py b/src/click/types.py
+index b6e98a9..11fc6ab 100644
+--- a/src/click/types.py
++++ b/src/click/types.py
+@@ -545,6 +545,34 @@ class DateTime(ParamType[datetime]):
+     formats: cabc.Sequence[str]
+ 
+     def __init__(self, formats: cabc.Sequence[str] | None = None):
++        if isinstance(formats, str):
++            raise TypeError(
++                "'formats' must be a sequence of format strings, not a single string."
++            )
++
++        seen: set[str] = set()
++
++        for index, fmt in enumerate(formats or ()):
++            if not isinstance(fmt, str):
++                raise TypeError(
++                    f"Format at index {index} must be a string,"
++                    f" not {type(fmt).__name__}."
++                )
++
++            # "%%" is a literal percent sign, not a directive.
++            directives = fmt.replace("%%", "")
++
++            if directives.endswith("%"):
++                raise ValueError(f"Format {fmt!r} ends with an incomplete directive.")
++
++            if "%" not in directives:
++                raise ValueError(f"Format {fmt!r} has no '%' directive.")
++
++            if fmt in seen:
++                raise ValueError(f"Format {fmt!r} is listed more than once.")
++
++            seen.add(fmt)
++
+         self.formats = formats or [
+             "%Y-%m-%d",
+             "%Y-%m-%dT%H:%M:%S",

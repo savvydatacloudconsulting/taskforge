@@ -1,0 +1,7 @@
+task                                         fails_before   passes_after   nothing_breaks tests_have_tee verdict
+click__dedup_merge_x_eligibility_gate__05    PASS           PASS           PASS           PASS           ACCEPTED
+click__eligibility_gate__04                  PASS           PASS           PASS           PASS           ACCEPTED
+click__quantity_limit_x_audit_trail__01      PASS           PASS           PASS           PASS           ACCEPTED
+click__threshold_effect__03                  PASS           PASS           PASS           PASS           ACCEPTED
+click__validation_rejection__02              PASS           PASS           PASS           PASS           ACCEPTED
+5 of 5 accepted

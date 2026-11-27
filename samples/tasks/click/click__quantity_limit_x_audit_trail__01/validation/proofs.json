@@ -1,0 +1,209 @@
+{
+  "task_id": "click__quantity_limit_x_audit_trail__01",
+  "accepted": true,
+  "seconds": 13.92,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (2434 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 2434,
+        "SKIPPED": 4,
+        "XFAIL": 1
+      },
+      "seconds": 6.67
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (12 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 12
+        },
+        "seconds": 0.52,
+        "tail": "tors_respect_the_limit\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_zero_limit_rejects_everything\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_negative_limit_is_invalid\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_commands_count_but_are_not_recorded\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_over_the_limit\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_removing_a_command_frees_a_slot\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_history_without_limit_and_snapshot\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_other_failures_are_not_recorded\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_and_history_are_per_group\n12 failed in 0.32s\n",
+        "failing_tests": [
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_aliases_count_as_separate_names",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_commands_count_but_are_not_recorded",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_over_the_limit",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_decorators_respect_the_limit",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_history_without_limit_and_snapshot",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_and_history_are_per_group",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_of_ten_rejects_the_eleventh_command",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_negative_limit_is_invalid",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_other_failures_are_not_recorded",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_removing_a_command_frees_a_slot",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_replacing_is_allowed_when_full",
+          "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_zero_limit_rejects_everything"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (12 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.23
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.22
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 12
+            },
+            "seconds": 0.23
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 2434 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 2446,
+          "SKIPPED": 4,
+          "XFAIL": 1
+        },
+        "seconds": 6.81
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 12 of 12 broken versions (100%)",
+      "evidence": {
+        "mutants": 12,
+        "killed": 12,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 15,
+        "required": 0.6,
+        "mutant_list": [
+          {
+            "file": "src/click/core.py",
+            "site": 3,
+            "line": 1768,
+            "change": "line 1768: comparison Lt -> LtE",
+            "caught": true,
+            "code": "if max_commands < 0:"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 6,
+            "line": 1771,
+            "change": "line 1771: comparison Gt -> GtE",
+            "caught": true,
+            "code": "if len(commands) > max_commands:"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 5,
+            "line": 1771,
+            "change": "line 1771: negated if condition",
+            "caught": true,
+            "code": "if len(commands) > max_commands:"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 12,
+            "line": 1841,
+            "change": "line 1841: comparison GtE -> Gt",
+            "caught": true,
+            "code": "and len(self.commands) >= self.max_commands"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 10,
+            "line": 1839,
+            "change": "line 1839: removed 'not'",
+            "caught": true,
+            "code": "not replacing"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 8,
+            "line": 1838,
+            "change": "line 1838: negated if condition",
+            "caught": true,
+            "code": "if ("
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 9,
+            "line": 1839,
+            "change": "line 1839: logic And -> Or",
+            "caught": true,
+            "code": "not replacing"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 1,
+            "line": 1767,
+            "change": "line 1767: comparison IsNot -> Is",
+            "caught": true,
+            "code": "if max_commands is not None:"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 13,
+            "line": 1851,
+            "change": "line 1851: negated conditional-expression condition",
+            "caught": true,
+            "code": "\"replaced\" if replacing else \"added\", name, cmd, len(self.commands)"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 7,
+            "line": 1836,
+            "change": "line 1836: comparison In -> NotIn",
+            "caught": true,
+            "code": "replacing = name in self.commands"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 14,
+            "line": 1862,
+            "change": "line 1862: return value replaced by None",
+            "caught": true,
+            "code": "return tuple(self._registration_history)"
+          },
+          {
+            "file": "src/click/core.py",
+            "site": 0,
+            "line": 1767,
+            "change": "line 1767: negated if condition",
+            "caught": true,
+            "code": "if max_commands is not None:"
+          }
+        ]
+      }
+    }
+  ]
+}

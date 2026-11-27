@@ -1,0 +1,37 @@
+[
+  {
+    "task": "click__dedup_merge_x_eligibility_gate__05",
+    "upstream_commit": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+    "new_tests_fail_upstream": true,
+    "exit_code": 1,
+    "tail": "5.py::test_one_consistent_switch_guards_the_group[args0---lower]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_one_consistent_switch_guards_the_group[args1---upper]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_conflict_runs_no_callbacks\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_envvar_and_default_do_not_conflict\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs0]\nFAILED tests/test_tf_dedup_merge_x_eligibility_gate_05.py::test_ineligible_options_are_rejected[attrs1]\n21 failed in 0.76s\n"
+  },
+  {
+    "task": "click__eligibility_gate__04",
+    "upstream_commit": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+    "new_tests_fail_upstream": true,
+    "exit_code": 1,
+    "tail": "test_tf_eligibility_gate_04.py::test_rejected_dash_creates_no_file[False]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[data.txt]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[my-data.txt]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[-.txt]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[./-]\nFAILED tests/test_tf_eligibility_gate_04.py::test_open_file_object_passed_through\nFAILED tests/test_tf_eligibility_gate_04.py::test_dash_still_reads_stdin_when_allowed\n25 failed in 0.08s\n"
+  },
+  {
+    "task": "click__quantity_limit_x_audit_trail__01",
+    "upstream_commit": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+    "new_tests_fail_upstream": true,
+    "exit_code": 1,
+    "tail": "id\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_commands_count_but_are_not_recorded\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_over_the_limit\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_removing_a_command_frees_a_slot\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_history_without_limit_and_snapshot\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_other_failures_are_not_recorded\nFAILED tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_and_history_are_per_group\n12 failed in 0.34s\n"
+  },
+  {
+    "task": "click__threshold_effect__03",
+    "upstream_commit": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+    "new_tests_fail_upstream": true,
+    "exit_code": 1,
+    "tail": "fect_03.py::test_long_term_line_is_not_counted\nFAILED tests/test_tf_threshold_effect_03.py::test_paragraph_blank_lines_are_counted\nFAILED tests/test_tf_threshold_effect_03.py::test_separator_is_empty_inside_section_and_decided_per_call\nFAILED tests/test_tf_threshold_effect_03.py::test_single_row_gets_no_surrounding_blank_lines\nFAILED tests/test_tf_threshold_effect_03.py::test_empty_descriptions - TypeEr...\nFAILED tests/test_tf_threshold_effect_03.py::test_threshold_below_one_is_rejected[0]\nFAILED tests/test_tf_threshold_effect_03.py::test_threshold_below_one_is_rejected[-1]\n10 failed in 0.05s\n"
+  },
+  {
+    "task": "click__validation_rejection__02",
+    "upstream_commit": "08b803cf32ceb2ae6a772c62d5da42757a897d44",
+    "new_tests_fail_upstream": true,
+    "exit_code": 1,
+    "tail": "alueError-Format 'bad' has no '%' directive.]\nFAILED tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats1-TypeError-Format at index 0 must be a string, not int.]\nFAILED tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats2-ValueError-Format '%Y' is listed more than once.]\nFAILED tests/test_tf_validation_rejection_02.py::test_first_offending_item_is_reported[formats3-ValueError-Format 'x%' ends with an incomplete directive.]\nFAILED tests/test_tf_validation_rejection_02.py::test_error_raised_at_declaration\n23 failed in 0.08s\n"
+  }
+]

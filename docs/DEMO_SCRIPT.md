@@ -1,98 +1,128 @@
-# Demo video script (about 3 minutes)
+# Demo video script: pallets/click (about 6 minutes)
 
-Recorded entirely on the local web page. It needs no API key and no internet connection.
+The video shows the pipeline end to end: read click, make 5 tasks, open one, run Harbor in Docker, try to cheat the
+checker. Every check runs live. The AI answers were saved earlier, and the narration says so.
 
-Start it in a terminal in the project folder, then open <http://localhost:8765> (press Ctrl+F5 once):
+## Before recording
 
-```
-taskforge ui
-```
+1. In PowerShell, open Ubuntu, then go to the project folder (a folder on drive C is under `/mnt/c/`):
 
-The waiting times below were measured on a Windows laptop. Keep talking while checks run, and do one practice run first.
+   ```
+   wsl -d Ubuntu-24.04
+   ```
 
-| Time | On screen | Wait |
-|---|---|---|
-| 0:00 | The top of the page | |
-| 0:20 | Step 1: repository and recipes | a few seconds |
-| 0:35 | Make the exam, then steps 2 to 6 | about 14 s |
-| 1:30 | Try to cheat the checker | 4 s, then 14 s |
-| 2:10 | The retry example | about 17 s |
-| 2:40 | Reports, limits, close | |
+2. Run the setup once (about 7 minutes, needs Docker and internet). It must end with `ready to record`.
 
-## 0:00 – The problem (20 s)
+   ```
+   bash scripts/demo.sh setup
+   ```
 
-Show the title, **TaskForge: Exam Maker for Code**.
+3. Hide your user and computer name, make the text large (Ctrl and +), and make the window wide:
 
-> "Coding exams for AI are hard to make fair. A task can be unclear, or its tests can pass broken code. TaskForge turns a
-> real codebase into new exams, and rejects any exam it cannot prove is fair."
+   ```
+   PS1='$ '; clear
+   ```
 
-## 0:20 – Read the repo and pick a recipe (15 s)
+4. Open slide 2 of the solution deck for the opening picture.
+5. Do one full practice run. Close notifications, mail and other tabs.
 
-1. In **Who writes the exam?** choose **Any AI chat**. The ten recipes appear. Point at two of them.
-2. Switch back to **Recorded example (works offline)**. Leave **shop: Time-windowed promotion applied at checkout** selected.
-3. Point at the facts under the boxes: language, version, number of files, tests passing.
+To record screen and voice on Windows 11, Clipchamp (screen and camera recording) is one option.
 
-> "It reads the repository at one exact version and runs its tests. Then we pick a recipe, or combine two. With any AI
-> chat you can copy and paste, so no key is needed. For this video the AI's reply was saved earlier, but every check you
-> see is running now."
+## The script
 
-## 0:35 – Make the exam (55 s)
+Waiting times were measured on the development laptop. Keep talking while commands run.
 
-Click **Make the exam**. Scroll slowly through the steps as they fill in.
+| Time | On screen | Command | Wait |
+|---|---|---|---|
+| 0:00 | Slide 2 | | |
+| 0:20 | Read the repository | `bash scripts/demo.sh read` | 8 s |
+| 0:50 | Make 5 tasks | `bash scripts/demo.sh generate` | 80 s |
+| 2:20 | Open one task | `bash scripts/demo.sh task` (Enter twice) | none |
+| 3:05 | Harbor in Docker | `bash scripts/demo.sh harbor` | 95 s |
+| 4:50 | Try to cheat | `bash scripts/demo.sh cheat` | 30 s |
+| 5:30 | Results and limits | `bash scripts/demo.sh results` | none |
 
-- **Step 2, the feature request:** show the numbered requirements.
-  > "The exam question, in plain words, with exact rules."
-- **Step 3, the correct answer and the tests:** show the green added lines, then one test.
-- **Step 4, three checks:** wait for each PASS.
-  > "The new tests fail on the original code. They pass with the answer, three times in a row. And all the old tests still
-  > pass."
-- **Step 5, break the answer on purpose:** show the table and the bar.
-  > "We plant small bugs in the answer. These tests caught 10 of 12. At least 60% is required. The AI plays no part in
-  > these checks."
-- **Step 6, the saved package:** show the **ACCEPTED** banner and `task.toml` with the repository version.
+### 0:00 The problem
 
-## 1:30 – Try to cheat the checker (40 s)
+> "Coding exams for AI are hard to make fair. A task can be unclear, or its tests can accept broken code. TaskForge
+> makes new feature tasks from a real codebase and rejects any task it cannot prove. Here it is running on
+> pallets/click, one of the three starting repositories."
 
-Scroll to the bottom.
+### 0:20 Read the repository
 
-1. Click **A broken solution** (about 4 s).
-   > "I plant a bug in the answer. Check 2 fails, so the exam is rejected."
-2. Click **Tests with the assertions removed** (about 14 s).
-   > "Now the tests run the code but check nothing. The three checks still pass, so those alone would be fooled. The
-   > planted bugs expose it: only 3 of 12 caught. Rejected."
+> "It reads click at release 8.5.1, one exact commit. Before making anything, it checks that click's own 2,434 tests
+> pass."
 
-This second result is the strongest moment of the demo. Pause on the red **FAIL** and the banner.
+Point at `commit` and `baseline: PASS`.
 
-If there is time, **Tests that already pass** is rejected at check 1.
+### 0:50 Make 5 tasks
 
-## 2:10 – A failed first attempt (30 s)
+Start the command, then talk while the tasks appear one by one.
 
-1. Scroll to the top. In **Recorded exam** choose **library: Escalating tiered late fines for overdue returns**.
-2. Click **Make the exam** (about 17 s).
-3. In step 6, show the history line: attempt 1 failed `passes_after`, attempt 2 was accepted.
+> "Now it makes five tasks from different feature recipes, some of them combined. The AI is Claude Sonnet. Its ten
+> answers were saved earlier, so anyone can repeat this without a key, but every check you see is running now.
+>
+> Each task must earn four proofs. The new tests fail on the original click. They pass with the reference solution,
+> three times in a row. All existing tests still pass. And the tests must catch deliberately broken copies of the
+> solution. The checker never asks an AI."
 
-> "A second repository. The AI's first answer was wrong: its own solution and tests disagreed. The checker caught it,
-> sent back the failing output, and the second attempt passed."
+When it finishes, point at `accepted 5 of 5` and the variation score.
 
-## 2:40 – Results, limits and close (20 s)
+> "All five are accepted, and they differ in behaviour, not only in names."
 
-Click **Solver check: shop** at the top (it opens in a new tab).
+### 2:20 Open one task
 
-> "A different AI run saw only each question, never the tests or the answer, and solved all 8. It is the same model family
-> that wrote them, so other systems would probably score lower. So far we have tested on small example repositories, and
-> the planted-bug check works for Python only. Thank you."
+First screen, the files:
 
-## Checklist before recording
+> "Each task is a Harbor folder: the instruction, a Dockerfile, the reference solution and the tests."
 
-- Zoom the browser to about 125% so the text is readable in the video.
-- Step 6 shows the full folder path on your computer, which usually includes your user name. Scroll past it, blur it, or
-  run the project from a neutral folder such as `C:\taskforge`.
-- No `.env`, keys, other tabs or notifications are visible.
-- The tests pass (`evidence/pytest.txt`).
-- Upload as unlisted and open the link while logged out. The organisers had not stated a required length or format when
-  this was written, so check the submission portal.
+Press Enter. Second screen, the requirements:
 
-## If the page fails during recording
+> "The AI being tested sees only the instruction, with numbered rules that can each be tested."
 
-The same proof works in the terminal: `taskforge controls` accepts one good task and rejects six bad ones (about a
-minute).
+Press Enter. Third screen, the solution:
+
+> "Here is the heart of the solution: click's file type can now refuse a dash and demand a real file."
+
+### 3:05 Harbor in Docker
+
+> "Now the organisers' own checks, with Harbor in Docker. First the nop agent, which changes nothing. The reward must
+> be zero."
+
+While the first run finishes, continue:
+
+> "The tests are not inside the image. They are copied in only for grading, and the grader first restores click's old
+> tests, so editing them cannot raise a score."
+
+Point at the yellow `reward (nop): 0.0`.
+
+> "Then the oracle agent applies the reference solution. The reward must be one."
+
+Point at `reward (oracle): 1.0`.
+
+### 4:50 Try to cheat
+
+> "Last, I damage this task on purpose. Tests that already pass: rejected. A broken solution: rejected. Tests with
+> their checks removed: rejected, because they catch none of the planted bugs."
+
+### 5:30 Results and limits
+
+> "For all five tasks, all ten Harbor runs gave the required score.
+>
+> The limits: one of fifteen damaged copies was still accepted, because a planted bug that crashes the test code counts
+> as caught. We have not yet had a separate AI solve the click tasks from their instructions. And Harbor was run on one
+> computer. Thank you."
+
+## Checklist
+
+- The organisers had not stated a length or format when this was written. Check the submission page. To shorten the
+  video, speed up the waiting parts in an editor and write "sped up" on screen.
+- No user name, file path, key, other tab or notification is visible.
+- The code on GitHub is the same code you recorded.
+- Upload to Google Drive, set **General access** to **Anyone with the link** as **Viewer**, and open the link in a
+  private window to test it.
+
+## If a step fails while recording
+
+Stop, run the step again, and cut the failed part out. If Harbor cannot run, show `bash scripts/demo.sh results` and say
+that it is the saved run from 27 November 2026 (`evidence/click/harbor_docker.json`).

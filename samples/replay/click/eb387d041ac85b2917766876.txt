@@ -1,0 +1,1 @@
+["src/click/types.py::_NumberRangeBase.__init__", "src/click/types.py::FloatRange.__init__", "src/click/types.py::DateTime.__init__", "src/click/types.py::Choice.__init__", "src/click/types.py::Tuple.__init__", "src/click/types.py::File.__init__", "src/click/core.py::Option._validate", "src/click/core.py::Parameter.__init__"]

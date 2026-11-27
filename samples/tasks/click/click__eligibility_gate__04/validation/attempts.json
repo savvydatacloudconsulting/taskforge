@@ -1,0 +1,19 @@
+{
+  "task_id": "click__eligibility_gate__04",
+  "status": "accepted",
+  "title": "Let click.File refuse \"-\" so a parameter requires a real file path",
+  "recipes": [
+    "eligibility_gate"
+  ],
+  "reason": "",
+  "nearest_task": "click__validation_rejection__02",
+  "nearest_distance": 0.8435,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 13.983669266999641
+    }
+  ]
+}

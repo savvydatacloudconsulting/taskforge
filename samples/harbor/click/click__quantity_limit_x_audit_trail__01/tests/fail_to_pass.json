@@ -1,0 +1,14 @@
+[
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_aliases_count_as_separate_names",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_commands_count_but_are_not_recorded",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_constructor_over_the_limit",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_decorators_respect_the_limit",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_history_without_limit_and_snapshot",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_and_history_are_per_group",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_limit_of_ten_rejects_the_eleventh_command",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_negative_limit_is_invalid",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_other_failures_are_not_recorded",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_removing_a_command_frees_a_slot",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_replacing_is_allowed_when_full",
+ "tests/test_tf_quantity_limit_x_audit_trail_01.py::test_zero_limit_rejects_everything"
+]

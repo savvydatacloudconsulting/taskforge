@@ -1,0 +1,228 @@
+=== TITLE ===
+Let click.File refuse "-" so a parameter requires a real file path
+=== INSTRUCTION ===
+## Background
+`click.File` always treats the special value `-` as standard input or standard output, depending on the mode. Some commands cannot work with a standard stream, for example because they need to reopen the file by name or write next to it. These commands need a way to declare that only a real file path is eligible. `click.Path` has an `allow_dash` setting, but `click.File` has none.
+
+## Requirements
+1. `click.File` accepts a new keyword argument `allow_dash`, which defaults to `True`, and stores it in an attribute of the same name.
+2. With `allow_dash=True` (or omitted), behaviour is unchanged: `-` refers to the standard stream matching the mode.
+3. With `allow_dash=False`, converting the value `-` fails with `click.BadParameter` and the message given below. This applies to every mode (read, write, append, text and binary) and to every `lazy` setting.
+4. The rejection covers every form of the value whose file system path is exactly `-`: the string `"-"`, the bytes `b"-"`, and a path-like object such as `pathlib.Path("-")`.
+5. The rejection applies no matter where the value comes from, including the command line, a parameter default and an environment variable. The command callback does not run, and the command exits with the usual usage error exit code `2`.
+6. A rejected value does not create or open any file.
+7. With `allow_dash=False`, all other values behave as before. This includes ordinary paths, paths that merely contain a dash (such as the string `"./-"`, which names a file called `-`), and already open file objects, which are passed through unchanged.
+
+## Public interface
+- `click.File(mode="r", encoding=None, errors="strict", lazy=None, atomic=False, allow_dash=True)`
+- Attribute `File.allow_dash: bool`
+- Error type: `click.BadParameter`
+- Error message (exact): `'-' is not allowed: a file path is required.`
+
+## Examples
+```python
+@click.command()
+@click.option("--config", type=click.File("r", allow_dash=False))
+def cli(config):
+    click.echo(config.read())
+```
+
+```
+$ cli --config -
+...
+Error: Invalid value for '--config': '-' is not allowed: a file path is required.
+
+$ cli --config settings.ini
+(prints the file contents)
+```
+=== EDIT solution src/click/types.py ===
+<<<<<<< SEARCH
+    .. versionchanged:: 2.0
+        Added the ``atomic`` parameter.
+    """
+
+    name = "filename"
+=======
+    Set ``allow_dash`` to ``False`` to reject ``-`` and require a file path.
+
+    .. versionchanged:: 8.6
+        Added the ``allow_dash`` parameter.
+
+    .. versionchanged:: 2.0
+        Added the ``atomic`` parameter.
+    """
+
+    name = "filename"
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+    lazy: bool | None
+    atomic: bool
+
+    def __init__(
+        self,
+        mode: str = "r",
+        encoding: str | None = None,
+        errors: str | None = "strict",
+        lazy: bool | None = None,
+        atomic: bool = False,
+    ) -> None:
+        self.mode = mode
+        self.encoding = encoding
+        self.errors = errors
+        self.lazy = lazy
+        self.atomic = atomic
+=======
+    lazy: bool | None
+    atomic: bool
+    allow_dash: bool
+
+    def __init__(
+        self,
+        mode: str = "r",
+        encoding: str | None = None,
+        errors: str | None = "strict",
+        lazy: bool | None = None,
+        atomic: bool = False,
+        allow_dash: bool = True,
+    ) -> None:
+        self.mode = mode
+        self.encoding = encoding
+        self.errors = errors
+        self.lazy = lazy
+        self.atomic = atomic
+        self.allow_dash = allow_dash
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+        if _is_file_like(value):
+            return value
+
+        try:
+            lazy = self.resolve_lazy_flag(value)
+=======
+        if _is_file_like(value):
+            return value
+
+        if not self.allow_dash and os.fsdecode(value) == "-":
+            self.fail(
+                _("'-' is not allowed: a file path is required."),
+                param,
+                ctx,
+            )
+
+        try:
+            lazy = self.resolve_lazy_flag(value)
+>>>>>>> REPLACE
+=== FILE test tests/test_tf_eligibility_gate_04.py ===
+import io
+import pathlib
+
+import pytest
+
+import click
+from click.testing import CliRunner
+
+MESSAGE = "'-' is not allowed: a file path is required."
+
+
+def test_allow_dash_attribute():
+    assert click.File(allow_dash=False).allow_dash is False
+    assert click.File(allow_dash=True).allow_dash is True
+    assert click.File().allow_dash is True
+
+
+@pytest.mark.parametrize("mode", ["r", "rb", "w", "wb", "a"])
+def test_dash_rejected_on_command_line(mode):
+    calls = []
+
+    @click.command()
+    @click.option("--target", type=click.File(mode, allow_dash=False))
+    def cli(target):
+        calls.append(target)
+
+    result = CliRunner().invoke(cli, ["--target", "-"])
+
+    assert result.exit_code == 2
+    assert f"Invalid value for '--target': {MESSAGE}" in result.output
+    assert calls == []
+
+
+@pytest.mark.parametrize("lazy", [None, True, False])
+@pytest.mark.parametrize("value", ["-", b"-", pathlib.Path("-")])
+def test_every_form_of_dash_rejected(value, lazy):
+    file_type = click.File("r", lazy=lazy, allow_dash=False)
+
+    with pytest.raises(click.BadParameter) as excinfo:
+        file_type.convert(value, None, None)
+
+    assert excinfo.value.message == MESSAGE
+
+
+@pytest.mark.parametrize(
+    ("option_attrs", "env"),
+    [
+        ({"default": "-"}, {}),
+        ({"envvar": "TF_SOURCE"}, {"TF_SOURCE": "-"}),
+    ],
+)
+def test_dash_rejected_from_other_sources(option_attrs, env):
+    calls = []
+
+    @click.command()
+    @click.option(
+        "--source", type=click.File("r", allow_dash=False), **option_attrs
+    )
+    def cli(source):
+        calls.append(source)
+
+    result = CliRunner().invoke(cli, [], env=env, input="data")
+
+    assert result.exit_code == 2
+    assert MESSAGE in result.output
+    assert calls == []
+
+
+@pytest.mark.parametrize("lazy", [True, False])
+def test_rejected_dash_creates_no_file(tmp_path, monkeypatch, lazy):
+    monkeypatch.chdir(tmp_path)
+    file_type = click.File("w", lazy=lazy, allow_dash=False)
+
+    with pytest.raises(click.BadParameter):
+        file_type.convert("-", None, None)
+
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("name", ["data.txt", "my-data.txt", "-.txt", "./-"])
+def test_real_paths_still_accepted(tmp_path, monkeypatch, name):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / name).write_text("content", encoding="utf-8")
+
+    @click.command()
+    @click.argument("source", type=click.File("r", allow_dash=False))
+    def cli(source):
+        click.echo(source.read())
+
+    result = CliRunner().invoke(cli, ["--", name])
+
+    assert result.exit_code == 0
+    assert result.output == "content\n"
+
+
+def test_open_file_object_passed_through():
+    stream = io.StringIO("content")
+    file_type = click.File("r", allow_dash=False)
+
+    assert file_type.convert(stream, None, None) is stream
+
+
+def test_dash_still_reads_stdin_when_allowed():
+    @click.command()
+    @click.argument("source", type=click.File("r", allow_dash=True))
+    def cli(source):
+        click.echo(source.read())
+
+    result = CliRunner().invoke(cli, ["-"], input="from stdin")
+
+    assert result.exit_code == 0
+    assert result.output == "from stdin\n"
+=== END ===

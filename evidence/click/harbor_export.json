@@ -1,0 +1,42 @@
+{
+  "click__dedup_merge_x_eligibility_gate__05": {
+    "existing_tests_passing_before": 2434,
+    "existing_tests_skipped_or_expected_to_fail": 25,
+    "new_tests": 21,
+    "fail_to_pass": 21,
+    "new_tests_that_also_pass_before": 0,
+    "stability_runs": 3
+  },
+  "click__eligibility_gate__04": {
+    "existing_tests_passing_before": 2434,
+    "existing_tests_skipped_or_expected_to_fail": 25,
+    "new_tests": 25,
+    "fail_to_pass": 25,
+    "new_tests_that_also_pass_before": 0,
+    "stability_runs": 3
+  },
+  "click__quantity_limit_x_audit_trail__01": {
+    "existing_tests_passing_before": 2434,
+    "existing_tests_skipped_or_expected_to_fail": 25,
+    "new_tests": 12,
+    "fail_to_pass": 12,
+    "new_tests_that_also_pass_before": 0,
+    "stability_runs": 3
+  },
+  "click__threshold_effect__03": {
+    "existing_tests_passing_before": 2434,
+    "existing_tests_skipped_or_expected_to_fail": 25,
+    "new_tests": 10,
+    "fail_to_pass": 10,
+    "new_tests_that_also_pass_before": 0,
+    "stability_runs": 3
+  },
+  "click__validation_rejection__02": {
+    "existing_tests_passing_before": 2434,
+    "existing_tests_skipped_or_expected_to_fail": 25,
+    "new_tests": 23,
+    "fail_to_pass": 23,
+    "new_tests_that_also_pass_before": 0,
+    "stability_runs": 3
+  }
+}

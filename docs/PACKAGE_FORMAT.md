@@ -60,5 +60,35 @@ taskforge check samples/tasks/shop/<task> --repo examples/shop
 taskforge check-all samples/tasks/shop --repo examples/shop
 ```
 
-If the organisers' template differs (for example `instruction.md` and `task.toml` with other field names, or a
-`tests/test.sh` entry point), only the writer in `src/taskforge/package.py` needs to change.
+In a `src/` layout, `task.toml` also records `pythonpath = "src"` so each workspace tests its own copy of the library.
+
+## Harbor export (the organisers' format)
+
+`taskforge export` writes one Harbor 0.25 task folder per accepted package (`samples/harbor/click/`):
+
+```
+click__eligibility_gate__04/
+  task.toml                     schema 1.4; [metadata] repository, 40-character base_commit, licence; limits
+  instruction.md                the only file shown to the AI being evaluated
+  environment/Dockerfile        pinned Python image and packages; fetches only the base commit
+  solution/solve.sh             applies solution.patch
+  solution/solution.patch
+  tests/test.sh                 writes /logs/verifier/reward.txt
+  tests/grade.py                restores existing tests, runs both lists, computes the reward
+  tests/tf_outcomes.py          records each test's outcome
+  tests/config.json
+  tests/fail_to_pass.json
+  tests/pass_to_pass.json
+  tests/files/tests/test_tf_x.py   the new tests
+```
+
+Reward: `0.0` if any `pass_to_pass` test does not pass; `1.0` if every `fail_to_pass` test passes; otherwise the share
+of `fail_to_pass` tests that pass. If pytest cannot be started, no reward file is written.
+
+```
+taskforge export samples/tasks/click --repo <click clone> --config configs/click.json --out samples/harbor/click
+taskforge simulate samples/harbor/click --repo <click clone>     # rehearsal without Docker
+bash scripts/harbor_check.sh                                     # Harbor's nop and oracle runs (needs Docker)
+```
+
+Repository settings (commit, licence, image, packages, install command) are in `configs/click.json`.

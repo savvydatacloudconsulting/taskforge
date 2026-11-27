@@ -1,0 +1,6 @@
+harbor 0.25.0
+click__dedup_merge_x_eligibility_gate__05: loads; schema 1.4; name taskforge/click__dedup_merge_x_eligibility_gate__05; solve.sh, test.sh
+click__eligibility_gate__04: loads; schema 1.4; name taskforge/click__eligibility_gate__04; solve.sh, test.sh
+click__quantity_limit_x_audit_trail__01: loads; schema 1.4; name taskforge/click__quantity_limit_x_audit_trail__01; solve.sh, test.sh
+click__threshold_effect__03: loads; schema 1.4; name taskforge/click__threshold_effect__03; solve.sh, test.sh
+click__validation_rejection__02: loads; schema 1.4; name taskforge/click__validation_rejection__02; solve.sh, test.sh

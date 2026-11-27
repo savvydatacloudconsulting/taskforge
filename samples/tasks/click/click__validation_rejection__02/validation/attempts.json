@@ -1,0 +1,19 @@
+{
+  "task_id": "click__validation_rejection__02",
+  "status": "accepted",
+  "title": "Reject malformed format lists when constructing click.DateTime",
+  "recipes": [
+    "validation_rejection"
+  ],
+  "reason": "",
+  "nearest_task": "click__quantity_limit_x_audit_trail__01",
+  "nearest_distance": 0.9096,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 11.915193076001742
+    }
+  ]
+}

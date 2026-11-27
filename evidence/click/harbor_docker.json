@@ -1,0 +1,78 @@
+{
+  "harbor": "0.25.0",
+  "docker_server": "29.1.3",
+  "host": "Ubuntu 24.04 (WSL2)",
+  "command": "harbor run -p <task> -a <nop|oracle> -k 1 -o <out> --no-delete -y",
+  "runs": [
+    {
+      "task": "click__dedup_merge_x_eligibility_gate__05",
+      "agent": "nop",
+      "reward": 0.0,
+      "fail_to_pass": "0/21",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__dedup_merge_x_eligibility_gate__05",
+      "agent": "oracle",
+      "reward": 1.0,
+      "fail_to_pass": "21/21",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__eligibility_gate__04",
+      "agent": "nop",
+      "reward": 0.0,
+      "fail_to_pass": "0/25",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__eligibility_gate__04",
+      "agent": "oracle",
+      "reward": 1.0,
+      "fail_to_pass": "25/25",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__quantity_limit_x_audit_trail__01",
+      "agent": "nop",
+      "reward": 0.0,
+      "fail_to_pass": "0/12",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__quantity_limit_x_audit_trail__01",
+      "agent": "oracle",
+      "reward": 1.0,
+      "fail_to_pass": "12/12",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__threshold_effect__03",
+      "agent": "nop",
+      "reward": 0.0,
+      "fail_to_pass": "0/10",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__threshold_effect__03",
+      "agent": "oracle",
+      "reward": 1.0,
+      "fail_to_pass": "10/10",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__validation_rejection__02",
+      "agent": "nop",
+      "reward": 0.0,
+      "fail_to_pass": "0/23",
+      "pass_to_pass": "2434/2434"
+    },
+    {
+      "task": "click__validation_rejection__02",
+      "agent": "oracle",
+      "reward": 1.0,
+      "fail_to_pass": "23/23",
+      "pass_to_pass": "2434/2434"
+    }
+  ]
+}

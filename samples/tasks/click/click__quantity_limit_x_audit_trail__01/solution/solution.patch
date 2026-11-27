@@ -1,0 +1,142 @@
+diff --git a/src/click/__init__.py b/src/click/__init__.py
+index a34ab02..c479393 100644
+--- a/src/click/__init__.py
++++ b/src/click/__init__.py
+@@ -15,6 +15,7 @@ from .core import Group as Group
+ from .core import Option as Option
+ from .core import Parameter as Parameter
+ from .core import ParameterSource as ParameterSource
++from .core import RegistrationEvent as RegistrationEvent
+ from .decorators import argument as argument
+ from .decorators import command as command
+ from .decorators import confirmation_option as confirmation_option
+@@ -32,6 +33,7 @@ from .exceptions import BadArgumentUsage as BadArgumentUsage
+ from .exceptions import BadOptionUsage as BadOptionUsage
+ from .exceptions import BadParameter as BadParameter
+ from .exceptions import ClickException as ClickException
++from .exceptions import CommandLimitError as CommandLimitError
+ from .exceptions import FileError as FileError
+ from .exceptions import MissingParameter as MissingParameter
+ from .exceptions import NoSuchCommand as NoSuchCommand
+diff --git a/src/click/core.py b/src/click/core.py
+index e4b6b57..6eb2a8e 100644
+--- a/src/click/core.py
++++ b/src/click/core.py
+@@ -26,6 +26,7 @@ from ._utils import UNSET
+ from .exceptions import Abort
+ from .exceptions import BadParameter
+ from .exceptions import ClickException
++from .exceptions import CommandLimitError
+ from .exceptions import Exit
+ from .exceptions import MissingParameter
+ from .exceptions import NoArgsIsHelpError
+@@ -79,6 +80,18 @@ def _complete_visible_commands(
+                 yield name, command
+ 
+ 
++class RegistrationEvent(t.NamedTuple):
++    """One entry of :attr:`Group.registration_history`.
++
++    .. versionadded:: 8.5.0
++    """
++
++    action: t.Literal["added", "replaced", "rejected"]
++    name: str
++    command: Command
++    total: int
++
++
+ def _check_nested_chain(
+     base_command: Group, cmd_name: str, cmd: Command, register: bool = False
+ ) -> None:
+@@ -1738,6 +1751,7 @@ class Group(Command):
+         subcommand_metavar: str | None = None,
+         chain: bool = False,
+         result_callback: t.Callable[..., t.Any] | None = None,
++        max_commands: int | None = None,
+         **kwargs: t.Any,
+     ) -> None:
+         super().__init__(name, **kwargs)
+@@ -1750,6 +1764,17 @@ class Group(Command):
+         #: The registered subcommands by their exported names.
+         self.commands = commands
+ 
++        if max_commands is not None:
++            if max_commands < 0:
++                raise ValueError("'max_commands' must not be negative.")
++
++            if len(commands) > max_commands:
++                raise CommandLimitError(list(commands)[max_commands], max_commands)
++
++        #: The maximum number of subcommand names, or ``None`` for no limit.
++        self.max_commands = max_commands
++        self._registration_history: list[RegistrationEvent] = []
++
+         if no_args_is_help is None:
+             no_args_is_help = not invoke_without_command
+ 
+@@ -1808,7 +1833,33 @@ class Group(Command):
+         if name is None:
+             raise TypeError("Command has no name.")
+         _check_nested_chain(self, name, cmd, register=True)
++        replacing = name in self.commands
++
++        if (
++            not replacing
++            and self.max_commands is not None
++            and len(self.commands) >= self.max_commands
++        ):
++            self._registration_history.append(
++                RegistrationEvent("rejected", name, cmd, len(self.commands))
++            )
++            raise CommandLimitError(name, self.max_commands)
++
+         self.commands[name] = cmd
++        self._registration_history.append(
++            RegistrationEvent(
++                "replaced" if replacing else "added", name, cmd, len(self.commands)
++            )
++        )
++
++    @property
++    def registration_history(self) -> tuple[RegistrationEvent, ...]:
++        """The attempts to register a subcommand through :meth:`add_command`,
++        oldest first.
++
++        .. versionadded:: 8.5.0
++        """
++        return tuple(self._registration_history)
+ 
+     @t.overload
+     def command(self, __func: t.Callable[..., t.Any]) -> Command: ...
+diff --git a/src/click/exceptions.py b/src/click/exceptions.py
+index 6272c38..6e9e046 100644
+--- a/src/click/exceptions.py
++++ b/src/click/exceptions.py
+@@ -359,6 +359,26 @@ class FileError(ClickException):
+         )
+ 
+ 
++class CommandLimitError(RuntimeError):
++    """Raised if registering a command would exceed the ``max_commands``
++    limit of a group.
++
++    .. versionadded:: 8.5.0
++    """
++
++    command_name: t.Final[str]
++    limit: t.Final[int]
++
++    def __init__(self, command_name: str, limit: int) -> None:
++        message = _(
++            "Cannot add command {name!r}: the limit of {limit} commands has been"
++            " reached."
++        ).format(name=command_name, limit=limit)
++        super().__init__(message)
++        self.command_name = command_name
++        self.limit = limit
++
++
+ class Abort(RuntimeError):
+     """An internal signalling exception that signals Click to abort."""
+ 

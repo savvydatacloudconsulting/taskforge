@@ -32,6 +32,7 @@ class RepoConfig:
     setup_command: str | None = None
     snapshot: bool = False  # True when the folder is not a git repo (we snapshot it)
     timeout: int = 120
+    pythonpath: str | None = None  # repo folder put on PYTHONPATH during tests ("src" layouts)
 
 
 @dataclass
@@ -52,6 +53,7 @@ class TaskPackage:
     timeout: int = 120
     attempts: int = 1
     generator: str = f"taskforge {__version__}"
+    pythonpath: str | None = None
 
     @property
     def feature_tests(self) -> list[str]:
@@ -62,6 +64,7 @@ class TaskPackage:
             path=Path(path), name=self.repo_name, language=self.language, base_commit=self.base_commit,
             test_command=self.test_command, feature_test_command=self.feature_test_command,
             setup_command=self.setup_command, snapshot=self.snapshot, timeout=self.timeout,
+            pythonpath=self.pythonpath,
         )
 
     # ------------------------------------------------------------------ io
@@ -89,6 +92,8 @@ class TaskPackage:
             lines.append(f"feature_test_command = {q(self.feature_test_command)}")
         if self.setup_command:
             lines.append(f"setup_command = {q(self.setup_command)}")
+        if self.pythonpath:
+            lines.append(f"pythonpath = {q(self.pythonpath)}")
         lines += [f"timeout_seconds = {int(self.timeout)}", f"feature_tests = {q(self.feature_tests)}", "",
                   "[meta]", f"generator = {q(self.generator)}", f"attempts = {int(self.attempts)}", ""]
         return "\n".join(lines)
@@ -110,6 +115,7 @@ class TaskPackage:
             setup_command=meta["run"].get("setup_command"), timeout=int(meta["run"].get("timeout_seconds", 120)),
             attempts=int(meta.get("meta", {}).get("attempts", 1)),
             generator=meta.get("meta", {}).get("generator", ""),
+            pythonpath=meta["run"].get("pythonpath"),
         )
 
 

@@ -1,0 +1,20 @@
+{
+  "task_id": "click__quantity_limit_x_audit_trail__01",
+  "status": "accepted",
+  "title": "Limit the number of subcommands in a Group and keep a registration history",
+  "recipes": [
+    "quantity_limit",
+    "audit_trail"
+  ],
+  "reason": "",
+  "nearest_task": null,
+  "nearest_distance": 1.0,
+  "attempts": [
+    {
+      "number": 1,
+      "outcome": "accepted",
+      "detail": "all proofs passed",
+      "seconds": 14.013075156999548
+    }
+  ]
+}

@@ -1,0 +1,166 @@
+{
+  "task_id": "click__eligibility_gate__04",
+  "accepted": true,
+  "seconds": 13.91,
+  "baseline": {
+    "name": "baseline",
+    "status": "pass",
+    "detail": "original repository passes (2434 tests)",
+    "evidence": {
+      "returncode": 0,
+      "timed_out": false,
+      "counts": {
+        "PASSED": 2434,
+        "SKIPPED": 4,
+        "XFAIL": 1
+      },
+      "seconds": 6.67
+    }
+  },
+  "proofs": [
+    {
+      "name": "fails_before",
+      "status": "pass",
+      "detail": "feature tests fail on the original repository (25 failing)",
+      "evidence": {
+        "returncode": 1,
+        "timed_out": false,
+        "counts": {
+          "FAILED": 25
+        },
+        "seconds": 0.29,
+        "tail": "ILED tests/test_tf_eligibility_gate_04.py::test_dash_rejected_from_other_sources[option_attrs1-env1]\nFAILED tests/test_tf_eligibility_gate_04.py::test_rejected_dash_creates_no_file[True]\nFAILED tests/test_tf_eligibility_gate_04.py::test_rejected_dash_creates_no_file[False]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[data.txt]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[my-data.txt]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[-.txt]\nFAILED tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[./-]\nFAILED tests/test_tf_eligibility_gate_04.py::test_open_file_object_passed_through\nFAILED tests/test_tf_eligibility_gate_04.py::test_dash_still_reads_stdin_when_allowed\n25 failed in 0.08s\n",
+        "failing_tests": [
+          "tests/test_tf_eligibility_gate_04.py::test_allow_dash_attribute",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_from_other_sources[option_attrs0-env0]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_from_other_sources[option_attrs1-env1]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[a]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[r]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[rb]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[w]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_rejected_on_command_line[wb]",
+          "tests/test_tf_eligibility_gate_04.py::test_dash_still_reads_stdin_when_allowed",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-0-False]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-0-None]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-0-True]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-1-False]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-1-None]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[-1-True]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[value2-False]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[value2-None]",
+          "tests/test_tf_eligibility_gate_04.py::test_every_form_of_dash_rejected[value2-True]",
+          "tests/test_tf_eligibility_gate_04.py::test_open_file_object_passed_through",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[-.txt]",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[./-]",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[data.txt]",
+          "tests/test_tf_eligibility_gate_04.py::test_real_paths_still_accepted[my-data.txt]",
+          "tests/test_tf_eligibility_gate_04.py::test_rejected_dash_creates_no_file[False]",
+          "tests/test_tf_eligibility_gate_04.py::test_rejected_dash_creates_no_file[True]"
+        ]
+      }
+    },
+    {
+      "name": "passes_after",
+      "status": "pass",
+      "detail": "feature tests pass with the solution, identical across 3 runs (25 tests)",
+      "evidence": {
+        "runs": [
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 25
+            },
+            "seconds": 0.25
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 25
+            },
+            "seconds": 0.28
+          },
+          {
+            "returncode": 0,
+            "timed_out": false,
+            "counts": {
+              "PASSED": 25
+            },
+            "seconds": 0.28
+          }
+        ]
+      }
+    },
+    {
+      "name": "nothing_breaks",
+      "status": "pass",
+      "detail": "the full suite passes; all 2434 original tests still pass",
+      "evidence": {
+        "returncode": 0,
+        "timed_out": false,
+        "counts": {
+          "PASSED": 2459,
+          "SKIPPED": 4,
+          "XFAIL": 1
+        },
+        "seconds": 10.69
+      }
+    },
+    {
+      "name": "tests_have_teeth",
+      "status": "pass",
+      "detail": "tests caught 5 of 5 broken versions (100%)",
+      "evidence": {
+        "mutants": 5,
+        "killed": 5,
+        "survived": [],
+        "kill_rate": 1.0,
+        "available_sites": 5,
+        "required": 0.6,
+        "mutant_list": [
+          {
+            "file": "src/click/types.py",
+            "site": 1,
+            "line": 1001,
+            "change": "line 1001: negated if condition",
+            "caught": true,
+            "code": "if not self.allow_dash and os.fsdecode(value) == \"-\":"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 2,
+            "line": 1001,
+            "change": "line 1001: logic And -> Or",
+            "caught": true,
+            "code": "if not self.allow_dash and os.fsdecode(value) == \"-\":"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 0,
+            "line": 967,
+            "change": "line 967: flipped True -> False",
+            "caught": true,
+            "code": "allow_dash: bool = True,"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 4,
+            "line": 1001,
+            "change": "line 1001: comparison Eq -> NotEq",
+            "caught": true,
+            "code": "if not self.allow_dash and os.fsdecode(value) == \"-\":"
+          },
+          {
+            "file": "src/click/types.py",
+            "site": 3,
+            "line": 1001,
+            "change": "line 1001: removed 'not'",
+            "caught": true,
+            "code": "if not self.allow_dash and os.fsdecode(value) == \"-\":"
+          }
+        ]
+      }
+    }
+  ]
+}

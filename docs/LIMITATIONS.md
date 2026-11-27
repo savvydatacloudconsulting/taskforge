@@ -2,6 +2,32 @@
 
 What TaskForge does not do, what is only partly tested, and which choices were made because of constraints.
 
+## The pallets/click tasks (the Track 1 entry)
+
+- **Harbor runs were made on one machine only**: Harbor 0.25.0, Docker 29.1.3, Ubuntu 24.04 under WSL2, x86-64. All 10
+  runs gave the required reward (`evidence/click/harbor_docker.json`). Each of the 5 `oracle` runs and 5 `nop` runs was
+  made once.
+- The test lists were recorded on Ubuntu with Python 3.12.3. In the containers (Python 3.12.15, Debian bookworm, tests
+  run as root) all 2,434 listed existing tests passed.
+- The image pins the Python base image by digest and the Python packages by version. The two system packages (`git`,
+  `less`) are not pinned, and building needs network access to fetch them and click.
+- The tests ran with network access available. They are not meant to need it, but the task files do not block it.
+- The AI answers came from Claude Sonnet through Claude Code sub-agents (model setting `sonnet`) using the manual
+  backend: 10 requests (5 to choose which code to read, 5 to write a task). Each sub-agent was told to read only its
+  prompt file. That was an instruction, not an enforced sandbox. All 5 tasks passed on the first attempt and no answer
+  was edited by hand, so click gives no example of the retry loop (the `library` example does).
+- The factory itself was changed for click before the answers were requested: `src/` layout support, selecting code
+  from large files, search-and-replace edits, a control run in the mutation check, and the Harbor export.
+- "Not upstream" means that each task's new tests fail on click's main branch of 26 November 2026
+  (`08b803cf32ceb2ae6a772c62d5da42757a897d44`). It cannot rule out the same idea under another name, or in an open pull
+  request.
+- Failure cases (`evidence/click/negative_controls.md`): 14 of 15 deliberately damaged copies were rejected. The one
+  accepted copy shows a real weakness of the mutation check, described below.
+- The solver check has **not** been run on click, so there is no independent evidence that these five instructions are
+  enough to solve them.
+- Feature quality was judged by reading the instructions. The tasks are opt-in additions to a mature library; some, such
+  as a history of subcommand registrations, are less likely real requests than others.
+
 ## How the sample tasks were produced
 
 - The 8 sample tasks for the `shop` example were written by **independent AI agents** that each saw only the factory's
@@ -22,8 +48,11 @@ What TaskForge does not do, what is only partly tested, and which choices were m
 
 - It proves behavioural properties: the tests fail before, pass after (3 stable runs), nothing that passed before breaks,
   and deliberately broken copies of the solution are caught.
-- It does **not** prove the instruction is unambiguous for a human or an AI. Solvability is shown by our own reference
-  solution passing the tests; an independent solver agent is a natural next step and is not built.
+- It does **not** prove the instruction is unambiguous for a human or an AI. The optional solver check (below) gives
+  some evidence; it supports only small repositories where the solver can return whole files.
+- A planted bug counts as caught whenever the tests fail, including when the test code crashes. Tests with no assert
+  statement can still catch most bugs in a feature that mainly raises errors or stores values, so the proof shows that
+  bugs make the tests fail, not that the tests compare the right values.
 - The mutation check uses a fixed set of operators and a 60% threshold. Some mutants are harmless (equivalent) and are
   not detected as such, so a perfect kill rate is not expected. Tasks whose solution has no mutable logic get the proof
   marked `skipped` rather than `pass`.
@@ -56,10 +85,10 @@ What TaskForge does not do, what is only partly tested, and which choices were m
 
 ## Isolation and safety
 
-- Every run happens in a throw-away copy of the repository with a timeout, with environment variables that look like
-  secrets (`KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `CREDENTIAL`) removed. This is **not a container**: network access and
-  the rest of the file system are not blocked. Run untrusted repositories inside Docker or a VM. A Docker runner was not
-  built (Docker was not available on the development machine).
+- Every factory run happens in a throw-away copy of the repository with a timeout, with environment variables that look
+  like secrets (`KEY`, `TOKEN`, `SECRET`, `PASSWORD`, `CREDENTIAL`) removed. This is **not a container**: network access
+  and the rest of the file system are not blocked. Run untrusted repositories inside Docker or a VM. Only the exported
+  Harbor tasks run in containers; the factory itself has no Docker runner.
 - Generated tests and solutions are validated for path safety (no `..`, no absolute paths, no `.git`), may not edit
   existing tests, and must create new test files only.
 - The recipes are benign feature patterns. There are no special guardrails for security-related tasks; the organisers
@@ -67,15 +96,17 @@ What TaskForge does not do, what is only partly tested, and which choices were m
 
 ## Scale
 
-- Prompts include whole source files while they fit (default 60,000 characters), and outlines for the rest. For larger
-  repositories there is a two-step mode (ask which files to change, then show them in full). It is covered by unit tests
-  on small examples but has **not been run on a large repository**.
+- Prompts include whole source files while they fit (default 60,000 characters). For larger repositories there is a
+  two-step mode: the AI chooses files or definitions from outlines, then sees those in full. It has been run on click
+  only. Python definitions can be selected one by one; other languages are selected by whole file.
+- The Harbor export builds Python tasks that use pytest. The other two starting repositories (TypeScript and C++) are
+  not supported.
+- The solver check and the web page have not been adapted to click.
 - The variation score is a heuristic (normalised token shingles plus recipe tags and touched symbols). The 0.25
   near-duplicate threshold was set on the example repositories and may need tuning elsewhere.
 - There is no cost accounting beyond counting AI calls. `--max-calls` and the answer cache limit spending.
 
-## Package format
+## Package formats
 
-The organisers are still finalising their official task template. The layout used here follows the anatomy described in
-the explainer session (a task file naming the repository and version, the instruction as markdown, the reference solution
-as a diff under `solution/`, and the tests). It will need a small adapter when the official template is published.
+The factory keeps its own small package format (used by the checker and the examples) and exports the organisers' format,
+Harbor 0.25, from it. See [PACKAGE_FORMAT.md](PACKAGE_FORMAT.md).

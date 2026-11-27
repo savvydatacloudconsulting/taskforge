@@ -1,0 +1,1 @@
+["src/click/core.py::Group.__init__", "src/click/core.py::Group.add_command", "src/click/core.py::Group.command", "src/click/core.py::Group.group", "src/click/core.py::Group.to_info_dict", "src/click/core.py::_check_nested_chain", "src/click/exceptions.py", "src/click/__init__.py"]

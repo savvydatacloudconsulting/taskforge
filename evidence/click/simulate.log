@@ -1,0 +1,7 @@
+local rehearsal of the grading script (no Docker; not a Harbor run)
+click__dedup_merge_x_eligibility_gate__05    nop 0.0    oracle 1.0    OK
+click__eligibility_gate__04                  nop 0.0    oracle 1.0    OK
+click__quantity_limit_x_audit_trail__01      nop 0.0    oracle 1.0    OK
+click__threshold_effect__03                  nop 0.0    oracle 1.0    OK
+click__validation_rejection__02              nop 0.0    oracle 1.0    OK
+5 of 5 tasks give nop 0.0 and oracle 1.0

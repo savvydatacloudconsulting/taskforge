@@ -1,0 +1,5 @@
+exported click__dedup_merge_x_eligibility_gate__05: 21 fail-to-pass, 2434 existing tests kept passing
+exported click__eligibility_gate__04: 25 fail-to-pass, 2434 existing tests kept passing
+exported click__quantity_limit_x_audit_trail__01: 12 fail-to-pass, 2434 existing tests kept passing
+exported click__threshold_effect__03: 10 fail-to-pass, 2434 existing tests kept passing
+exported click__validation_rejection__02: 23 fail-to-pass, 2434 existing tests kept passing

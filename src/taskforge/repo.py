@@ -6,8 +6,8 @@ from __future__ import annotations
 import ast
 import os
 from collections import Counter
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass, field, replace
+from pathlib import Path, PurePosixPath
 
 from .package import RepoConfig
 from .patchutil import is_test_path
@@ -77,7 +77,16 @@ def resolve_repo(
     return RepoConfig(
         path=p, name=name or p.name, language=lang, base_commit=commit, test_command=cmd,
         feature_test_command=feature_test_command, setup_command=setup_command, snapshot=snapshot, timeout=timeout,
+        pythonpath=detect_src_layout(p) if lang == "python" else None,
     )
+
+
+def detect_src_layout(path: Path) -> str | None:
+    """"src" when the packages live under src/ (tests must import them from there)."""
+    src = path / "src"
+    if src.is_dir() and any((child / "__init__.py").is_file() for child in src.iterdir() if child.is_dir()):
+        return "src"
+    return None
 
 
 # ------------------------------------------------------------- code map
@@ -140,7 +149,10 @@ def load_context(repo: RepoConfig, workspace_dir: Path | None = None) -> RepoCon
                 text = full.read_text(encoding="utf-8").replace("\r\n", "\n")
             except UnicodeDecodeError:
                 continue
-            (tests if is_test_path(rel) else sources)[rel] = text
+            if is_test_path(rel):
+                tests[rel] = text
+            elif not repo.pythonpath or rel.startswith(repo.pythonpath + "/"):
+                sources[rel] = text  # in a src layout, docs and example scripts are not the library
     test_dir = "tests"
     for rel in tests:
         parts = rel.split("/")
@@ -148,6 +160,96 @@ def load_context(repo: RepoConfig, workspace_dir: Path | None = None) -> RepoCon
             test_dir = parts[0] if parts[0].lower() in ("tests", "test", "__tests__", "spec") else "/".join(parts[:-1])
             break
     return RepoContext(tree=tree, sources=sources, tests=tests, test_dir=test_dir)
+
+
+def python_definitions(source: str, name: str) -> list[tuple[int, int]]:
+    """Line ranges (1-based, inclusive, decorators included) of every definition called ``name``,
+    which may be dotted ("Class.method"). Overloads give more than one range."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+    nodes: list = list(tree.body)
+    parts = name.split(".")
+    found: list = []
+    for depth, part in enumerate(parts):
+        found = [n for n in nodes
+                 if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and n.name == part]
+        if depth < len(parts) - 1:
+            nodes = [child for n in found for child in n.body]
+    return [(min([n.lineno] + [d.lineno for d in n.decorator_list]), n.end_lineno) for n in found]
+
+
+def _module_header(source: str, limit: int = 120) -> str:
+    """The lines before the first top-level definition: imports and module constants."""
+    out = []
+    for line in source.splitlines()[:limit]:
+        if line.startswith(("def ", "class ", "async def ", "@")):
+            break
+        out.append(line)
+    return "\n".join(out).rstrip()
+
+
+def render_selection(ctx: RepoContext, selected: list[str], budget: int = 110_000) -> RepoContext:
+    """For large repositories: show the selected files or definitions in full, outline everything else.
+
+    ``selected`` entries are paths, or "path::Name" for one class, function or "Class.method".
+    """
+    whole: list[str] = []
+    wanted: dict[str, list[str]] = {}
+    for entry in selected:
+        path, _, symbol = entry.partition("::")
+        if path not in ctx.sources:
+            continue
+        if symbol:
+            wanted.setdefault(path, []).append(symbol)
+        elif path not in whole:
+            whole.append(path)
+
+    parts = ["## File tree", "\n".join(sorted(ctx.sources) + sorted(ctx.tests)), ""]
+    used = 0
+    shown: list[str] = []
+    for rel in whole:
+        text = ctx.sources[rel].rstrip()
+        if used + len(text) <= budget:
+            parts += [f"## FILE {rel} (full content)", "```python", text, "```", ""]
+            used += len(text)
+            shown.append(rel)
+    for rel, symbols in wanted.items():
+        if rel in shown:
+            continue
+        source = ctx.sources[rel]
+        lines = source.splitlines()
+        header_done = False
+        covered: list[tuple[int, int]] = []
+        for symbol in symbols:
+            for start, end in python_definitions(source, symbol):
+                if any(a <= start and end <= b for a, b in covered):
+                    continue
+                block = "\n".join(lines[start - 1:end])
+                if used + len(block) > budget:
+                    continue
+                if not header_done:
+                    parts += [f"## FILE {rel} (top of the file)", "```python", _module_header(source), "```", ""]
+                    header_done = True
+                parts += [f"## EXCERPT {rel} :: {symbol} (lines {start}-{end}, exact current code)",
+                          "```python", block, "```", ""]
+                used += len(block)
+                covered.append((start, end))
+                shown.append(f"{rel}::{symbol}")
+    parts.append("## Outlines of all source files (names and signatures only)")
+    for rel in sorted(ctx.sources):
+        if rel not in shown:
+            parts += [f"### {rel}", outline(rel, ctx.sources[rel]), ""]
+    if ctx.tests:
+        stems = [PurePosixPath(s.partition("::")[0]).stem.lstrip("_") for s in shown]
+        names = sorted(ctx.tests)
+        sample = next((t for s in stems for t in names if PurePosixPath(t).name.startswith(f"test_{s}")),
+                      next((t for t in names if PurePosixPath(t).name.startswith("test_")), names[0]))
+        parts += [f"## Existing tests ({len(ctx.tests)} files): " + ", ".join(names),
+                  f"## Start of the existing test file {sample} (style reference)", "```python",
+                  ctx.tests[sample][:5000].rstrip(), "```"]
+    return replace(ctx, full_text="\n".join(parts), overflow=True, shown_full=shown)
 
 
 def render_context(ctx: RepoContext, budget: int = 60_000, force_full: list[str] | None = None) -> RepoContext:
